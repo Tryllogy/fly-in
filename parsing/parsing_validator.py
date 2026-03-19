@@ -20,7 +20,7 @@ class ParsingValidator(BaseModel):
 
     @classmethod
     def check_name(
-        cls,
+        cls: "ParsingValidator",
         value: str
     ) -> None:
         if " " in value or "-" in value:
@@ -29,7 +29,7 @@ class ParsingValidator(BaseModel):
 
     @classmethod
     def meta(
-        cls,
+        cls: "ParsingValidator",
         value: dict[str, str | int]
     ) -> None:
         for key, val in value["meta"].items():
@@ -112,7 +112,7 @@ class ParsingValidator(BaseModel):
         return self
 
     @model_validator(mode="after")
-    def validate_start_drones(
+    def validate_start_end_drones(
         self
     ) -> Self:
         if self.start['meta'].get("max_drones") is not None:
@@ -120,12 +120,7 @@ class ParsingValidator(BaseModel):
                 raise ValueError(
                     "Start hub has incorrect number "
                     f"of drones: {self.n_drones}")
-        return self
 
-    @model_validator(mode="after")
-    def validate_end_drones(
-        self
-    ) -> Self:
         if self.end['meta'].get("max_drones") is not None:
             if (self.end['meta']["max_drones"] != self.n_drones):
                 raise ValueError(
@@ -151,7 +146,7 @@ class ParsingValidator(BaseModel):
     @model_validator(mode="after")
     def validate_connection_unique_link(
         self
-    ) -> None:
+    ) -> Self:
         for i, connection in enumerate(self.connection):
             for j, other_connection in enumerate(self.connection):
                 if i != j:
@@ -162,3 +157,5 @@ class ParsingValidator(BaseModel):
                         raise ValueError(
                             "Duplicate connection found: "
                             f"\'{connection['1']}\' -> \'{connection['2']}\'")
+
+        return self
