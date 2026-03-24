@@ -1,4 +1,8 @@
+from typing import Any, Optional
+
 class Drone:
+    turn: int = 0
+    
     def __init__(
         self,
         n_drones: int,
@@ -8,7 +12,8 @@ class Drone:
         connection: list[dict[str, str | int]]
     ) -> None:
         self.n_drones: int = n_drones
-        self.drones: list[dict[int, tuple[int, int]]] = []
+        self.drones: list[dict[int, dict[str, str | tuple[int, int]
+                            | dict[str, str | int]]]] = []
         self.start: dict[str, str | tuple[int, int]
                          | dict[str, str | int]] = start
         self.end: dict[str, str | tuple[int, int] | dict[str, str | int]] = end
@@ -16,6 +21,7 @@ class Drone:
                             | dict[str, str | int]]] = hub
         self.connection: list[dict[str, str | int]] = connection
         self.n_hub: int = len(self.hub) + 2
+        self.start["meta"]["actual_drones"] = n_drones
 
         self.create_drones()
 
@@ -93,45 +99,78 @@ class Drone:
     def create_drones(self) -> None:
         for i in range(1, self.n_drones + 1):
             self.drones.append({
-                i: self.start["position"]
+                i: self.start
             })
 
-    def get_zone(
-        self,
-        pos: tuple[int, int]
-    ) -> str:
-        if pos == self.start["position"]:
-            return self.start["name"]
-        if pos == self.end["position"]:
-            return self.end["name"]
-
+    def get_meta_from_str(self, name: str) -> Optional[Any]:
+        if name == self.start["name"]:
+            return self.start
+        if name == self.end["name"]:
+            return self.end
         for h in self.hub:
-            if h["position"] == pos:
-                return h["name"]
-
-        return "NONE"
+            if h["name"] == name:
+                return h
+        return None
+    
+    def get_neighbors(
+        self,
+        meta: Any
+    ) -> list[tuple[int, int]]:
+        neighbors: list[Any] = []
+        
+        for con in self.connection:
+            if con["1"] == meta["name"]:
+                meta_neighbor: Any = self.get_meta_from_str(con["2"])
+                if (meta_neighbor["meta"].get("zone") is None
+                    or meta_neighbor["meta"].get("zone") != "blocked"):
+                    neighbors.append(meta_neighbor)
+        return neighbors
 
     def move_drones(self) -> None:
-        # TODO : BOUCLER JUSQUA CE QUE TOUS LES DRONES SOIENT SUR END
-        for i in range(5):
+        finished: int = 0
+        while finished < self.n_drones:
+            finished = 0
             for d in self.drones:
 
-                if list(d.values())[0] == self.end["position"]:
+                id: int = list(d.keys())[0]
+                meta: Any = list(d.values())[0]
+                if meta["name"] == self.end["name"]:
+                    finished += 1
                     continue
-
-                if (self.step(d)):
-                    print(f"D{list(d.keys())[0]}-"
-                          f"{self.get_zone(list(d.values())[0])}", end=" ")
+                
+                meta_neighbors: list[Any] = self.get_neighbors(meta)
+                if (self.step(d, meta_neighbors)):
+                    meta = list(d.values())[0]
+                    print(f"D{id}-{meta['name']}", end=" ")
             print()
+
+            # TODO : Faire un vrai calcul pour le nombre de turn
+            if finished < self.n_drones:
+                Drone.turn += 1
+        
+        print(f"All drones finished, total turns: {Drone.turn}")
 
     def step(
         self,
-        drone: dict[int, tuple[int, int]]
+        drone: Any,
+        meta_neighbors: Any
     ) -> bool:
         # TODO : TROUVER LE MEILLEUR CHEMIN A PARTIR DE LA POSITION ACTUELLE
         # SI PAS DE PLACE SUR LE PROCHAIN HUB -> ATTENDRE
         # SI PRIORITY ALORS PASSER PAR LA SAUF SI PLEIN ET AUTRE CHEMIN
-        # EVITER LES ZONES RESTRICTED
 
         # SI DRONE BOUGE ALORS RENVOYER true SINON false
-        return True
+        if len(meta_neighbors) < 1:
+            raise ValueError("No neighbors")
+
+        for n in meta_neighbors:
+            if n["meta"].get("max_drones") and n["meta"]["actual_drones"] == n["meta"]["max_drones"]:
+                continue
+            
+            n["meta"]["actual_drones"] += 1
+            d_meta: Any = list(drone.values())[0]
+            d_meta["meta"]["actual_drones"] -= 1
+            drone.update({list(drone.keys())[0]: n})
+            return True
+
+        return False
