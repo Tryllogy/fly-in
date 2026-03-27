@@ -20,10 +20,11 @@ class Drone:
         self.hub: list[dict[str, str | tuple[int, int]
                             | dict[str, str | int]]] = hub
         self.connection: list[dict[str, str | int]] = connection
-        self.n_hub: int = len(self.hub) + 2
+        self.belonging: list[dict[str, list[str]]] = []
         self.start["meta"]["actual_drones"] = n_drones
 
         self.create_drones()
+        self.make_belonging()
 
     @classmethod
     def from_file(cls, file_path: str) -> "Drone":
@@ -41,136 +42,260 @@ class Drone:
         for con in self.connection:
             print(f"Connection: {con}", end="\n")
         print()
-        print(f"Map width: {self.map_width}")
-        print(f"Map height: {self.map_height}")
+        # print(f"Map width: {self.map_width}")
+        # print(f"Map height: {self.map_height}")
+        for b in self.belonging:
+            print(f"Belonging : {list(b.keys())[0]}: {list(b.values())[0]}")
         print()
         for d in self.drones:
             print(f"Drone {list(d.keys())[0]}: {list(d.values())[0]}")
 
-    def get_positions(
-        self
-    ) -> list[tuple[int, int]]:
-        positions: list[tuple[int, int]] = []
-        positions.append(self.start["position"])
-        positions.append(self.end["position"])
-        for hub in self.hub:
-            for pos in hub:
-                if isinstance(hub[pos], tuple):
-                    positions.append(hub[pos])
-        return positions
+    # def get_positions(
+    #     self
+    # ) -> list[tuple[int, int]]:
+    #     positions: list[tuple[int, int]] = []
+    #     positions.append(self.start["position"])
+    #     positions.append(self.end["position"])
+    #     for hub in self.hub:
+    #         for pos in hub:
+    #             if isinstance(hub[pos], tuple):
+    #                 positions.append(hub[pos])
+    #     return positions
 
-    def set_map_dimension(self) -> None:
-        self.map_min_width: int = min(
-            min(list([hub[pos][1] for pos in hub
-                      if isinstance(hub[pos], tuple)]
-                     for hub in self.hub)),
-            [self.end["position"][1]],
-            [self.start["position"][1]]
-        )[0]
+    # def set_map_dimension(self) -> None:
+    #     self.map_min_width: int = min(
+    #         min(list([hub[pos][1] for pos in hub
+    #                   if isinstance(hub[pos], tuple)]
+    #                  for hub in self.hub)),
+    #         [self.end["position"][1]],
+    #         [self.start["position"][1]]
+    #     )[0]
 
-        self.map_min_height: int = min(
-            min(list([hub[pos][0] for pos in hub
-                      if isinstance(hub[pos], tuple)]
-                     for hub in self.hub)),
-            [self.end["position"][0]],
-            [self.start["position"][0]]
-        )[0]
+    #     self.map_min_height: int = min(
+    #         min(list([hub[pos][0] for pos in hub
+    #                   if isinstance(hub[pos], tuple)]
+    #                  for hub in self.hub)),
+    #         [self.end["position"][0]],
+    #         [self.start["position"][0]]
+    #     )[0]
 
-        self.map_max_width: int = max(
-            max(list([hub[pos][1] for pos in hub
-                      if isinstance(hub[pos], tuple)]
-                     for hub in self.hub)),
-            [self.end["position"][1]],
-            [self.start["position"][1]]
-        )[0]
+    #     self.map_max_width: int = max(
+    #         max(list([hub[pos][1] for pos in hub
+    #                   if isinstance(hub[pos], tuple)]
+    #                  for hub in self.hub)),
+    #         [self.end["position"][1]],
+    #         [self.start["position"][1]]
+    #     )[0]
 
-        self.map_max_height: int = max(
-            max(list([hub[pos][0] for pos in hub
-                      if isinstance(hub[pos], tuple)]
-                     for hub in self.hub)),
-            [self.end["position"][0]],
-            [self.start["position"][0]]
-        )[0]
+    #     self.map_max_height: int = max(
+    #         max(list([hub[pos][0] for pos in hub
+    #                   if isinstance(hub[pos], tuple)]
+    #                  for hub in self.hub)),
+    #         [self.end["position"][0]],
+    #         [self.start["position"][0]]
+    #     )[0]
 
-        self.map_width: int = abs(self.map_min_width) + abs(self.map_max_width)
-        self.map_height: int = abs(
-            self.map_min_height) + abs(self.map_max_height)
+    #     self.map_width: int = abs(self.map_min_width) + abs(self.map_max_width)
+    #     self.map_height: int = abs(
+    #         self.map_min_height) + abs(self.map_max_height)
 
     def create_drones(self) -> None:
         for i in range(1, self.n_drones + 1):
             self.drones.append({
-                i: self.start
+                i: self.start["name"]
             })
-
-    def get_meta_from_str(self, name: str) -> Optional[Any]:
-        if name == self.start["name"]:
-            return self.start
-        if name == self.end["name"]:
-            return self.end
-        for h in self.hub:
-            if h["name"] == name:
-                return h
-        return None
-    
-    def get_neighbors(
-        self,
-        meta: Any
-    ) -> list[tuple[int, int]]:
-        neighbors: list[Any] = []
-        
+            
+    def make_belonging(self) -> None:
+        names: set[str] = set()
         for con in self.connection:
-            if con["1"] == meta["name"]:
-                meta_neighbor: Any = self.get_meta_from_str(con["2"])
-                if (meta_neighbor["meta"].get("zone") is None
-                    or meta_neighbor["meta"].get("zone") != "blocked"):
-                    neighbors.append(meta_neighbor)
-        return neighbors
+            if con["1"] not in names:
+                names.add(con["1"])
+                self.belonging.append({con["1"]: []})
+                
+            if con["2"] not in names:
+                names.add(con["2"])
+                self.belonging.append({con["2"]: []})
+
+            for belong in self.belonging:
+                for key, v in belong.items():
+                    if key == con["1"]:
+                        belong[con["1"]].append(con["2"])
+                        parent: Optional[str] = self.make_parents(con["1"])
+                        if parent is not None and parent not in v:
+                            belong[con["1"]].append(parent)
+                    
+                    if key == con["2"]:
+                        belong[con["2"]].append(con["1"])
+                        parent: Optional[str] = self.make_parents(con["2"])
+                        if parent is not None and parent not in v:
+                            belong[con["2"]].append(parent)
+                            
+
+    def make_parents(
+        self, 
+        name: str
+    ) -> str:
+        for b in self.belonging:
+            for k, v in b.items():
+                if name in v:
+                    return k
+        return None
 
     def move_drones(self) -> None:
         finished: int = 0
-        while finished < self.n_drones:
-            finished = 0
+        while finished < 1:
+            # finished: int = 0
+            
             for d in self.drones:
-
-                id: int = list(d.keys())[0]
-                meta: Any = list(d.values())[0]
-                if meta["name"] == self.end["name"]:
+                name_zone: str = list(d.values())[0]
+                if name_zone == self.end["name"]:
                     finished += 1
                     continue
-                
-                meta_neighbors: list[Any] = self.get_neighbors(meta)
-                if (self.step(d, meta_neighbors)):
-                    meta = list(d.values())[0]
-                    print(f"D{id}-{meta['name']}", end=" ")
-            print()
+            
+                if self.step(d):
+                    print("STEP")
 
-            # TODO : Faire un vrai calcul pour le nombre de turn
-            if finished < self.n_drones:
-                Drone.turn += 1
-        
-        print(f"All drones finished, total turns: {Drone.turn}")
+            finished += 1
 
     def step(
         self,
-        drone: Any,
-        meta_neighbors: Any
+        drone
     ) -> bool:
-        # TODO : TROUVER LE MEILLEUR CHEMIN A PARTIR DE LA POSITION ACTUELLE
-        # SI PAS DE PLACE SUR LE PROCHAIN HUB -> ATTENDRE
-        # SI PRIORITY ALORS PASSER PAR LA SAUF SI PLEIN ET AUTRE CHEMIN
+        name: str = list(drone.values())[0]
+        visited: dict[str, int] = {name: 0}
+        path: list[str] = [name]
+        length: int
 
-        # SI DRONE BOUGE ALORS RENVOYER true SINON false
-        if len(meta_neighbors) < 1:
-            raise ValueError("No neighbors")
+        while len(path) >= 1:
+            actual: str = path.pop()
+            length = visited[actual]
+            neighbors: list = self.get_neighbors(actual)
 
-        for n in meta_neighbors:
-            if n["meta"].get("max_drones") and n["meta"]["actual_drones"] == n["meta"]["max_drones"]:
-                continue
+            if neighbors is None:
+                raise ValueError("No neighbors found")
             
-            n["meta"]["actual_drones"] += 1
-            d_meta: Any = list(drone.values())[0]
-            d_meta["meta"]["actual_drones"] -= 1
-            drone.update({list(drone.keys())[0]: n})
-            return True
+            for n in neighbors:
+                if (n not in visited and not self.check_status(name, "blocked")):
+                    visited.update({n: length + 1})
+                    path.append(n)
+                elif (n in visited and not self.check_status(name, "blocked")):
+                    if length + 1 < visited[n]:
+                        visited.update({n: visited[n] + 1})
+                        path.append(n)
+
+        return self.move_shortest(drone, visited)
+
+    def move_shortest(
+        self,
+        drone,
+        path
+    ) -> bool:
+        actual: int
+        for k, v in path.items():
+            pass
+        
+        return False
+
+    def check_connection_capacity(
+        self,
+        name
+    ) -> bool:
+        #TODO : faire une fonction qui regarde si le link_capacity d'une connection a deja ete atteint ce tour
+        pass
+
+    def check_status(
+        self,
+        name: str,
+        status: str
+    ) -> bool:
+        for h in self.hub:
+            if h == name:
+                for k, v in h["meta"]:
+                    if k == "zone" and v == status:
+                        return True
 
         return False
+
+    def get_neighbors(
+        self,
+        name
+    ) -> list:
+        for b in self.belonging:
+            for k, v in b.items():
+                if k == name:
+                    return v
+        
+        return None
+
+    # def get_meta_from_str(self, name: str) -> Optional[Any]:
+    #     if name == self.start["name"]:
+    #         return self.start
+    #     if name == self.end["name"]:
+    #         return self.end
+    #     for h in self.hub:
+    #         if h["name"] == name:
+    #             return h
+    #     return None
+    
+    # def get_neighbors(
+    #     self,
+    #     meta: Any
+    # ) -> list[tuple[int, int]]:
+    #     neighbors: list[Any] = []
+        
+    #     for con in self.connection:
+    #         if con["1"] == meta["name"]:
+    #             meta_neighbor: Any = self.get_meta_from_str(con["2"])
+    #             if (meta_neighbor["meta"].get("zone") is None
+    #                 or meta_neighbor["meta"].get("zone") != "blocked"):
+    #                 neighbors.append(meta_neighbor)
+    #     return neighbors
+
+    # def move_drones(self) -> None:
+    #     finished: int = 0
+    #     while finished < self.n_drones:
+    #         finished = 0
+    #         for d in self.drones:
+
+    #             id: int = list(d.keys())[0]
+    #             meta: Any = list(d.values())[0]
+    #             if meta["name"] == self.end["name"]:
+    #                 finished += 1
+    #                 continue
+                
+    #             meta_neighbors: list[Any] = self.get_neighbors(meta)
+    #             if (self.step(d, meta_neighbors)):
+    #                 meta = list(d.values())[0]
+    #                 print(f"D{id}-{meta['name']}", end=" ")
+    #         print()
+
+    #         # TODO : Faire un vrai calcul pour le nombre de turn
+    #         if finished < self.n_drones:
+    #             Drone.turn += 1
+        
+    #     print(f"All drones finished, total turns: {Drone.turn}")
+
+    # def step(
+    #     self,
+    #     drone: Any,
+    #     meta_neighbors: Any
+    # ) -> bool:
+    #     # TODO : TROUVER LE MEILLEUR CHEMIN A PARTIR DE LA POSITION ACTUELLE
+    #     # SI PAS DE PLACE SUR LE PROCHAIN HUB -> ATTENDRE
+    #     # SI PRIORITY ALORS PASSER PAR LA SAUF SI PLEIN ET AUTRE CHEMIN
+
+    #     # SI DRONE BOUGE ALORS RENVOYER true SINON false
+    #     if len(meta_neighbors) < 1:
+    #         raise ValueError("No neighbors")
+
+    #     for n in meta_neighbors:
+    #         if n["meta"].get("max_drones") and n["meta"]["actual_drones"] == n["meta"]["max_drones"]:
+    #             continue
+            
+    #         n["meta"]["actual_drones"] += 1
+    #         d_meta: Any = list(drone.values())[0]
+    #         d_meta["meta"]["actual_drones"] -= 1
+    #         drone.update({list(drone.keys())[0]: n})
+    #         return True
+
+    #     return False

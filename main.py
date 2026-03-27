@@ -217,32 +217,32 @@ def main() -> None:
         print("Usage: python main.py <map_file>")
         return
 
-    try:
-        drones: Drone = Drone.from_file(sys.argv[1])
-        drones.set_map_dimension()
-        drones.show_data()
-    except Exception as e:
-        print(f"Error: {e}")
+    # try:
+    drones: Drone = Drone.from_file(sys.argv[1])
+    # drones.set_map_dimension()
+    drones.show_data()
+    # except Exception as e:
+    #     print(f"Error: {e}")
 
-    try:
-        app: Ursina = Ursina()
-        Entity.default_shader = lit_with_shadows_shader
-        space: int = 3
+    # try:
+    app: Ursina = Ursina()
+    Entity.default_shader = lit_with_shadows_shader
+    space: int = 3
 
-        set_sky()
-        set_ground(max(drones.n_drones * 7, 30))
-        set_player()
-        set_spawn(space, drones.start)
-        set_end(space, drones.end)
-        set_hubs(space, drones.hub)
-        set_connections(space, drones)
-        set_drones(drones)
-        drones.move_drones()
+    set_sky()
+    set_ground(max(drones.n_drones * 7, 30))
+    set_player()
+    set_spawn(space, drones.start)
+    set_end(space, drones.end)
+    set_hubs(space, drones.hub)
+    set_connections(space, drones)
+    set_drones(drones)
+    drones.move_drones()
             
         # drones.show_data()
-        app.run()
-    except Exception as e:
-        print(f"Error: {e}")
+    app.run()
+    # except Exception as e:
+    #     print(f"Error: {e}")
 
 
 if __name__ == "__main__":
