@@ -239,7 +239,7 @@ def main() -> None:
     set_drones(drones)
     drones.move_drones()
             
-        # drones.show_data()
+    drones.show_data()
     app.run()
     # except Exception as e:
     #     print(f"Error: {e}")
