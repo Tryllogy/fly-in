@@ -53,7 +53,8 @@ def parse_connection(words: list[str]) -> dict[str, str]:
     return {
         "1": zones[0],
         "2": zones[1],
-        "max_link_capacity": max_link_capacity
+        "max_link_capacity": max_link_capacity,
+        "connection_turn": 0
     }
 
 
@@ -97,7 +98,10 @@ def parse_map(
                 n_drones = int(line.split()[1])
         except Exception as e:
             raise ValueError(f"Error occurred while parsing line {i + 1}: {e}")
-
+        
+    end["meta"].update({"max_drones": n_drones})
+    start["meta"]["actual_drones"] = n_drones
+    start["meta"]["max_drones"] = n_drones
     return n_drones, start, end, hub, connection
 
 

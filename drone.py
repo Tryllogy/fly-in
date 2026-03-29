@@ -21,7 +21,6 @@ class Drone:
                             | dict[str, str | int]]] = hub
         self.connection: list[dict[str, str | int]] = connection
         self.belonging: list[dict[str, list[str]]] = []
-        self.start["meta"]["actual_drones"] = n_drones
 
         self.create_drones()
         self.make_belonging()
@@ -92,25 +91,38 @@ class Drone:
         return None
 
     def move_drones(self) -> None:
-        finished: int = 0
-        while finished < self.n_drones:
-            finished: int = 0
-            
+        turn: int = 0
+        print()
+        while self.end["meta"]["actual_drones"] != self.n_drones:
             for d in self.drones:
                 id_drone, name_zone = next(iter(d.items()))
                 if name_zone == self.end["name"]:
-                    finished += 1
                     continue
             
-                if self.step(d):
+                path = self.step(d)
+                if path is None:
+                    continue
+
+                if self.move_shortest(d, path):
                     _, name_zone = next(iter(d.items()))
                     print(f"D{id_drone}-{name_zone}", end=" ")
+
             print()
+            turn += 1
+            for d in self.drones:
+                id_drone, name_zone = next(iter(d.items()))
+                if self.check_status(name_zone, "restricted"):
+                    turn += 1
+                    break
+            
+            self.reset_connection_turn()
+        
+        print("\nTotal turns : ", turn)
 
     def step(
         self,
         drone
-    ) -> bool:
+    ) -> Any:
         name: str = list(drone.values())[0]
         visited: dict[str, int] = {name: 0}
         path: list[str] = [name]
@@ -133,7 +145,9 @@ class Drone:
                         visited.update({n: length + 1})
                         path.append(n)
 
-        return self.move_shortest(drone, visited)
+        if len(visited) == 1:
+            return None
+        return visited
 
     def move_shortest(
         self,
@@ -142,6 +156,48 @@ class Drone:
     ) -> bool:
         actual: tuple[str, int]
         
+        name_closest_end: str = self.get_closest_to_end_from_point(drone, path)
+        if name_closest_end is None:
+            return False
+        for k, v in path.items():
+            if k == name_closest_end:
+                actual = (k, v)
+                break
+
+        while actual[1] != 1:
+            parents = self.get_parent(actual, path)
+            n_parents: int = len(parents)
+            if n_parents == 0:
+                return False
+
+            for p in parents:
+                actual = p
+                if self.check_status(p[0], "priority"):
+                    break
+
+        if not self.check_capacity(actual[0]):
+            return False
+        
+        self.update_pos(drone, actual)
+        return True
+
+    def get_closest_to_end_from_point(
+        self,
+        drone,
+        true_path
+    ) -> str:
+        false_connection = [c for c in self.connection]
+        for f_c in false_connection:
+            f_c["connection_turn"] = 0
+        
+        saved_connection = self.connection
+        self.connection = false_connection
+
+        path = self.step(drone)
+        if path is None:
+            raise ValueError("Path not Found")
+
+        actual: tuple[str, int]
         for k, v in path.items():
             if k == self.end["name"]:
                 actual = (k, v)
@@ -153,25 +209,23 @@ class Drone:
             if n_parents == 0:
                 return False
 
-            for p in parents:
-                if self.check_status(p[0], "priority") and self.check_capacity(p[0]):
-                    actual = p
+            for parent in parents:
+                actual = parent
+                if self.check_status(parent[0], "priority"):
                     break
-                elif self.check_capacity(p[0]):
-                    actual = p
-                else:
-                    actual = None
 
-            if actual is None:
-                return False
-
-        self.update_pos(drone, actual)
-        return True
+        for p in true_path:
+            if p == actual[0]:
+                self.connection = saved_connection
+                return actual[0]
+        self.connection = saved_connection
+        return None
 
     def update_pos(self, drone: dict, pos: tuple[str, int]) -> None:
         id_drone, pos_drone = next(iter(drone.items()))
-
-
+        connection = self.get_connection(pos_drone, pos[0])
+        
+        connection["connection_turn"] += 1
         if pos_drone == self.start["name"]:
             self.start["meta"]["actual_drones"] -= 1
         if pos[0] == self.end["name"]:
@@ -184,6 +238,10 @@ class Drone:
                 h["meta"]["actual_drones"] += 1
 
         drone.update({id_drone: pos[0]})
+
+    def reset_connection_turn(self) -> None:
+        for c in self.connection:
+            c["connection_turn"] = 0
 
     def get_parent(
         self,
@@ -215,17 +273,16 @@ class Drone:
         self,
         name: str
     ) -> bool:
+        if name == self.start["name"]:
+            return self.start["meta"]["actual_drones"] + 1 <=  self.start["meta"]["max_drones"]
+        if name == self.end["name"]:
+            return self.end["meta"]["actual_drones"] + 1 <=  self.end["meta"]["max_drones"]
+
         for h in self.hub:
             if h["name"] == name:
                 return h["meta"]["actual_drones"] + 1 <= h["meta"]["max_drones"]
 
         return False
-
-    def check_connection_capacity(
-        self,
-        name
-    ) -> bool:
-        pass
 
     def check_status(
         self,
@@ -244,9 +301,31 @@ class Drone:
         self,
         name
     ) -> list:
+        neighbors: list = []
         for b in self.belonging:
             for k, v in b.items():
                 if k == name:
-                    return v
+                    neighbors = v
+                    break
+
+        filtered_neighbors: list = []
+        for n in neighbors:
+            connection = self.get_connection(name, n)
+            if connection["connection_turn"] < connection["max_link_capacity"]:
+                filtered_neighbors.append(n)
+
+        return filtered_neighbors
+    
+    
+    def get_connection(
+        self,
+        con_1: str,
+        con_2: str
+    ) -> Any: 
+        for c in self.connection:
+            if c["1"] == con_1 and c["2"] == con_2:
+                return c
+            if c["2"] == con_1 and c["1"] == con_2:
+                return c
         
         return None

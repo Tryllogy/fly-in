@@ -220,7 +220,7 @@ def main() -> None:
     # try:
     drones: Drone = Drone.from_file(sys.argv[1])
     # drones.set_map_dimension()
-    drones.show_data()
+    # drones.show_data()
     # except Exception as e:
     #     print(f"Error: {e}")
 
@@ -239,7 +239,7 @@ def main() -> None:
     set_drones(drones)
     drones.move_drones()
             
-    drones.show_data()
+    # drones.show_data()
     app.run()
     # except Exception as e:
     #     print(f"Error: {e}")

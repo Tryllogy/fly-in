@@ -77,7 +77,7 @@ class ParsingValidator(BaseModel):
                     if not isinstance(val, int):
                         raise ValueError(
                             f"Max link capacity must be an integer: {val}")
-                else:
+                elif key != "connection_turn":
                     if not isinstance(val, str):
                         raise ValueError(
                             f"Connection items must be strings: {val}")
