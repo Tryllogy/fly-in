@@ -1,28 +1,102 @@
 from drone import Drone
-from ursina import (Ursina, Entity,
-                    BoxCollider, color, DirectionalLight, Sky, Vec3, Mesh)
+from ursina import *
 from ursina.prefabs.first_person_controller import FirstPersonController
 from ursina.shaders import lit_with_shadows_shader
 import sys
 
 
-def print_data(n_drones, start, end, hub, connection):
-    print(n_drones)
-    print()
-    print(start)
-    print()
-    print(end)
-    print()
-    for h in hub:
-        print(h)
-    print()
-    for c in connection:
-        print(c)
+class DroneEntity(Entity):
+    turn: int = 0
+    max_turn: int = 0
+    def __init__(self, drone_id: int, pos_x: int, pos_y: int, hubs):
+        super().__init__(
+            model='sphere',
+            scale=0.5,
+            texture='rainbow',
+            texture_scale=(1, 2),
+            position=Vec3(pos_x, 2, pos_y),
+            collider='box',
+            color=color.turquoise
+        )
+        self.pos_x: int = pos_x
+        self.pos_y: int = pos_y
+        self.drone_id: int = drone_id
+        self.movements: list = []
+        self.hubs = hubs
+        
+    def update(self) -> None:
+        hub_name: str = None
+        for t_id, turn in self.all_turns.items():
+            if t_id != DroneEntity.turn:
+                continue
+
+            for t in turn:
+                id_drone, zone = next(iter(t.items()))
+                if id_drone != self.drone_id:
+                    continue
+                else:
+                    hub_name = zone
+
+        if hub_name is None:
+            return
+
+        for h in self.hubs:
+            if h.name == hub_name:
+                self.position = h.position
+                x, y, z = self.position
+                self.position = Vec3(x, 2, z)
+                
+    @classmethod
+    def add_turn(cls) -> None:
+        if cls.turn == cls.max_turn:
+            return
+        cls.turn += 1
+        
+    @classmethod
+    def remove_turn(cls) -> None:
+        if cls.turn == 0:
+            return
+        cls.turn -= 1
+        
+    @classmethod
+    def set_max_turn(cls, all_turns) -> None:
+        max_turn: int = list(all_turns.keys())[-1]
+        cls.max_turn = max_turn
+
+
+class HubEntity(Entity):
+    def __init__(self, pos_x: int, pos_y: int, color_point: color, texture: str, name: str):
+        super().__init__(
+            model='cube',
+            scale=0.5,
+            texture=texture,
+            texture_scale=(1, 2),
+            position=Vec3(
+                pos_x,
+                0.3,
+                pos_y
+            ),
+            collider='box',
+            color=color_point
+            )
+        self.name = name
+    
+
+def next_input(key) -> None:
+    if key == 'escape':
+        quit()
+
+    if key == "n":
+        DroneEntity.add_turn()
+
+    if key == "p":
+        DroneEntity.remove_turn()
 
 
 def input(key):
     if key == 'escape':
         quit()
+
 
 
 def get_texture(
@@ -103,7 +177,8 @@ def set_player() -> None:
         speed=20,
         collider='box',
         gravity=0,
-        y=2
+        y=2,
+        ignore_paused=True
     )
     player.collider = BoxCollider(
         player,
@@ -119,21 +194,17 @@ def set_spawn(
 ) -> None:
     pos_x: int = start["position"][0] * space
     pos_y: int = start["position"][1] * space
+    name: str = start["name"]
     color_point: color = get_color(start["meta"]["color"])
     texture: str = get_texture(start)
 
-    Entity(model='cube',
-           scale=0.5,
-           texture=texture,
-           texture_scale=(1, 2),
-           position=Vec3(
-               pos_x,
-               0.3,
-               pos_y
-           ),
-           collider='box',
-           color=color_point
-           )
+    return HubEntity(
+        pos_x=pos_x,
+        pos_y=pos_y,
+        color_point=color_point,
+        texture=texture,
+        name=name
+        )
 
 
 def set_end(
@@ -143,48 +214,36 @@ def set_end(
 ) -> None:
     pos_x = end["position"][0] * space
     pos_y = end["position"][1] * space
+    name: str = end["name"]
     color_point: color = get_color(end["meta"]["color"])
     texture: str = get_texture(end)
 
-    Entity(model='cube',
-           scale=0.5,
-           texture=texture,
-           texture_scale=(1, 2),
-           position=Vec3(
-               pos_x,
-               0.3,
-               pos_y
-           ),
-           collider='box',
-           color=color_point
-           )
+    return HubEntity(
+        pos_x=pos_x,
+        pos_y=pos_y,
+        color_point=color_point,
+        texture=texture,
+        name=name
+        )
 
 
-def set_hubs(
-    space: int,
-    hub: list[dict[str, str | tuple[int, int]
-                   | dict[str, str | int]]]
-) -> None:
-
-    for h in hub:
+def set_hubs(start, end, space: int, drones) -> list:
+    hub_entities: list = [start, end]
+    for h in drones.hub:
         pos_x: int = h["position"][0] * space
         pos_y: int = h["position"][1] * space
         color_point: color = get_color(h["meta"]["color"])
         texture: str = get_texture(h)
+        hub_entities.append(HubEntity(pos_x=pos_x, pos_y=pos_y, color_point=color_point, texture=texture, name=h["name"]))
+    
+    return hub_entities
 
-        Entity(model='cube',
-               scale=0.5,
-               texture=texture,
-               texture_scale=(1, 2),
-               position=Vec3(
-                   pos_x,
-                   0.3,
-                   pos_y
-               ),
-               collider='box',
-               color=color_point
-               )
+def set_drones(drones, hubs) -> list:
+    drones_entities: list[DroneEntity] = []
+    for i in range(drones.n_drones):
+        drones_entities.append(DroneEntity(i + 1, drones.start["position"][0], drones.start["position"][1], hubs))
 
+    return drones_entities
 
 def set_sky() -> None:
     sun: DirectionalLight = DirectionalLight()
@@ -192,24 +251,31 @@ def set_sky() -> None:
     Sky()
 
 
-def set_drones(
-    drones: Drone
-) -> None:
-    pos_x: int = drones.start["position"][0]
-    pos_y: int = drones.start["position"][1]
-    for i in range(drones.n_drones):
-        Entity(model='sphere',
-               scale=0.5,
-               texture='rainbow',
-               texture_scale=(1, 2),
-               position=Vec3(
-                   pos_x,
-                   2,
-                   pos_y
-               ),
-               collider='box',
-               color=color.turquoise
-               )
+def get_turns(drones, start) -> list:
+    movements: Generator = drones.move_drones()
+    all_movements: list[dict] = []
+    turn: int = 1
+    turns: dict = {0: []}
+    for drone in drones.drones:
+        id_drone, name = next(iter(drone.items()))
+        copy = {id_drone: start.name}
+        turns[0].append(copy)
+    while 1:
+        try:
+            drone: dict | int = next(movements)
+            if isinstance(drone, dict):
+                id_drone, zone_name = next(iter(drone.items()))
+                copy = {id_drone: zone_name}
+                all_movements.append(copy)
+            else:
+                turns.update({turn: all_movements.copy()})
+                turn += 1
+                all_movements.clear()
+        except StopIteration as e:
+            break
+
+    return turns
+
 
 
 def main() -> None:
@@ -217,32 +283,34 @@ def main() -> None:
         print("Usage: python main.py <map_file>")
         return
 
-    # try:
-    drones: Drone = Drone.from_file(sys.argv[1])
-    # drones.set_map_dimension()
-    # drones.show_data()
-    # except Exception as e:
-    #     print(f"Error: {e}")
+    try:
+        drones: Drone = Drone.from_file(sys.argv[1])
+    except Exception as e:
+        print(f"Error: {e}")
 
-    # try:
-    app: Ursina = Ursina()
-    Entity.default_shader = lit_with_shadows_shader
-    space: int = 3
+    try:
+        app: Ursina = Ursina()
+        Entity.default_shader = lit_with_shadows_shader
+        space: int = 3
 
-    set_sky()
-    set_ground(max(drones.n_drones * 7, 30))
-    set_player()
-    set_spawn(space, drones.start)
-    set_end(space, drones.end)
-    set_hubs(space, drones.hub)
-    set_connections(space, drones)
-    set_drones(drones)
-    drones.move_drones()
-            
-    # drones.show_data()
-    app.run()
-    # except Exception as e:
-    #     print(f"Error: {e}")
+        set_sky()
+        set_ground(max(drones.n_drones * 7, 30))
+        set_player()
+        start: Entity = set_spawn(space, drones.start)
+        end: Entity = set_end(space, drones.end)
+        hub_entities: list = set_hubs(start, end, space, drones)
+        set_connections(space, drones)
+        drones_entities: list = set_drones(drones, hub_entities)
+        
+        all_turns: dict = get_turns(drones, start)
+        for d in drones_entities:
+            d.all_turns = all_turns
+        DroneEntity.set_max_turn(all_turns)
+        print(all_turns)
+        pause_handler = Entity(ignore_paused=True, input=next_input)
+        app.run()
+    except Exception as e:
+        print(f"Error: {e}")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, Optional, Generator
 
 class Drone:
     turn: int = 0
@@ -90,10 +90,11 @@ class Drone:
                     return k
         return None
 
-    def move_drones(self) -> None:
+    def move_drones(self) -> Generator:
         turn: int = 0
         print()
         while self.end["meta"]["actual_drones"] != self.n_drones:
+            moved: int = 0
             for d in self.drones:
                 id_drone, name_zone = next(iter(d.items()))
                 if name_zone == self.end["name"]:
@@ -105,7 +106,9 @@ class Drone:
 
                 if self.move_shortest(d, path):
                     _, name_zone = next(iter(d.items()))
+                    moved += 1
                     print(f"D{id_drone}-{name_zone}", end=" ")
+                    yield d
 
             print()
             turn += 1
@@ -116,8 +119,10 @@ class Drone:
                     break
             
             self.reset_connection_turn()
+            yield moved
         
         print("\nTotal turns : ", turn)
+        return
 
     def step(
         self,
