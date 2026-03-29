@@ -3,6 +3,7 @@ from ursina import *
 from ursina.prefabs.first_person_controller import FirstPersonController
 from ursina.shaders import lit_with_shadows_shader
 import sys
+import math
 
 
 class DroneEntity(Entity):
@@ -10,21 +11,65 @@ class DroneEntity(Entity):
     max_turn: int = 0
     def __init__(self, drone_id: int, pos_x: int, pos_y: int, hubs):
         super().__init__(
-            model='sphere',
-            scale=0.5,
-            texture='rainbow',
-            texture_scale=(1, 2),
             position=Vec3(pos_x, 2, pos_y),
-            collider='box',
-            color=color.turquoise
+            collider='box'
         )
+
+        self.body = Entity(
+            parent=self,
+            model='cube',
+            scale=Vec3(0.45, 0.14, 0.28),
+            color=color.turquoise,
+            y=0
+        )
+
+        self.arm_x = Entity(
+            parent=self,
+            model='cube',
+            scale=Vec3(0.8, 0.04, 0.04),
+            color=color.gray
+        )
+
+        self.arm_z = Entity(
+            parent=self,
+            model='cube',
+            scale=Vec3(0.04, 0.04, 0.8),
+            color=color.gray
+        )
+
+        rotor_scale = Vec3(0.12, 0.02, 0.12)
+        rotor_height = 0.06
+        rotor_offsets = [
+            Vec3(0.36, rotor_height, 0.36),
+            Vec3(0.36, rotor_height, -0.36),
+            Vec3(-0.36, rotor_height, 0.36),
+            Vec3(-0.36, rotor_height, -0.36),
+        ]
+
+        self.rotors = [
+            Entity(parent=self, model='cube', scale=rotor_scale, position=offset, color=color.black66)
+            for offset in rotor_offsets
+        ]
+
         self.pos_x: int = pos_x
         self.pos_y: int = pos_y
         self.drone_id: int = drone_id
         self.movements: list = []
         self.hubs = hubs
-        
+        self.last_applied_turn: int = -1
+        self.move_duration: float = 0.5
+    
+    def move_to_hub(self, hub_pos, duration=0.35):
+        self.animate_position(
+            Vec3(hub_pos.x, 2, hub_pos.z),
+            duration=duration,
+            curve=curve.linear
+        )
+    
     def update(self) -> None:
+        if self.last_applied_turn == DroneEntity.turn:
+            return
+
         hub_name: str = None
         for t_id, turn in self.all_turns.items():
             if t_id != DroneEntity.turn:
@@ -38,13 +83,16 @@ class DroneEntity(Entity):
                     hub_name = zone
 
         if hub_name is None:
+            self.last_applied_turn = DroneEntity.turn
             return
 
         for h in self.hubs:
             if h.name == hub_name:
-                self.position = h.position
-                x, y, z = self.position
-                self.position = Vec3(x, 2, z)
+                target: Vec3 = Vec3(h.position.x, 2, h.position.z)
+                if (self.position - target).length() > 0.001:
+                    self.move_to_hub(h.position, self.move_duration)
+                self.last_applied_turn = DroneEntity.turn
+                break
                 
     @classmethod
     def add_turn(cls) -> None:
@@ -294,7 +342,7 @@ def main() -> None:
         space: int = 3
 
         set_sky()
-        set_ground(max(drones.n_drones * 7, 30))
+        set_ground(max((len(drones.hub) + 2) * 3, 30))
         set_player()
         start: Entity = set_spawn(space, drones.start)
         end: Entity = set_end(space, drones.end)
@@ -306,7 +354,6 @@ def main() -> None:
         for d in drones_entities:
             d.all_turns = all_turns
         DroneEntity.set_max_turn(all_turns)
-        print(all_turns)
         pause_handler = Entity(ignore_paused=True, input=next_input)
         app.run()
     except Exception as e:

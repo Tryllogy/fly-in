@@ -1,4 +1,5 @@
 from typing import Any, Optional, Generator
+from copy import deepcopy
 
 class Drone:
     turn: int = 0
@@ -183,7 +184,8 @@ class Drone:
         if not self.check_capacity(actual[0]):
             return False
         
-        self.update_pos(drone, actual)
+        if not self.update_pos(drone, actual):
+            return False
         return True
 
     def get_closest_to_end_from_point(
@@ -191,14 +193,14 @@ class Drone:
         drone,
         true_path
     ) -> str:
-        false_connection = [c for c in self.connection]
+        saved_connection = deepcopy(self.connection)
+        false_connection = deepcopy(self.connection)
         for f_c in false_connection:
             f_c["connection_turn"] = 0
         
-        saved_connection = self.connection
         self.connection = false_connection
-
         path = self.step(drone)
+
         if path is None:
             raise ValueError("Path not Found")
 
@@ -226,11 +228,13 @@ class Drone:
         self.connection = saved_connection
         return None
 
-    def update_pos(self, drone: dict, pos: tuple[str, int]) -> None:
+    def update_pos(self, drone: dict, pos: tuple[str, int]) -> bool:
         id_drone, pos_drone = next(iter(drone.items()))
         connection = self.get_connection(pos_drone, pos[0])
-        
+        if connection["connection_turn"] + 1 > connection["max_link_capacity"]:
+            return False
         connection["connection_turn"] += 1
+
         if pos_drone == self.start["name"]:
             self.start["meta"]["actual_drones"] -= 1
         if pos[0] == self.end["name"]:
@@ -243,6 +247,7 @@ class Drone:
                 h["meta"]["actual_drones"] += 1
 
         drone.update({id_drone: pos[0]})
+        return True
 
     def reset_connection_turn(self) -> None:
         for c in self.connection:
