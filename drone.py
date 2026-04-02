@@ -52,7 +52,7 @@ class Drone:
     def create_drones(self) -> None:
         for i in range(1, self.n_drones + 1):
             self.drones.append({
-                i: self.start["name"]
+                i: [self.start["name"], True]
             })
             
     def make_belonging(self) -> None:
@@ -97,8 +97,8 @@ class Drone:
         while self.end["meta"]["actual_drones"] != self.n_drones:
             moved: int = 0
             for d in self.drones:
-                id_drone, name_zone = next(iter(d.items()))
-                if name_zone == self.end["name"]:
+                id_drone, data = next(iter(d.items()))
+                if data[0] == self.end["name"]:
                     continue
             
                 path = self.step(d)
@@ -106,19 +106,13 @@ class Drone:
                     continue
 
                 if self.move_shortest(d, path):
-                    _, name_zone = next(iter(d.items()))
+                    id_drone, data = next(iter(d.items()))
                     moved += 1
-                    print(f"D{id_drone}-{name_zone}", end=" ")
+                    print(f"D{id_drone}-{data[0]}", end=" ")
                     yield d
 
             print()
             turn += 1
-            for d in self.drones:
-                id_drone, name_zone = next(iter(d.items()))
-                if self.check_status(name_zone, "restricted"):
-                    turn += 1
-                    break
-            
             self.reset_connection_turn()
             yield moved
         
@@ -129,7 +123,9 @@ class Drone:
         self,
         drone
     ) -> Any:
-        name: str = list(drone.values())[0]
+        drone_id, data = next(iter(drone.items()))
+        name: str = data[0]
+        waiting: bool = data[1]
         visited: dict[str, int] = {name: 0}
         path: list[str] = [name]
         length: int
@@ -161,7 +157,7 @@ class Drone:
         path
     ) -> bool:
         actual: tuple[str, int]
-        
+
         name_closest_end: str = self.get_closest_to_end_from_point(drone, path)
         if name_closest_end is None:
             return False
@@ -184,6 +180,10 @@ class Drone:
         if not self.check_capacity(actual[0]):
             return False
         
+        drone_id, data = next(iter(drone.items()))
+        if data[1] and self.check_status(actual[0], "restricted"):
+            drone[drone_id] = [data[0], False]
+            return None
         if not self.update_pos(drone, actual):
             return False
         return True
@@ -229,24 +229,25 @@ class Drone:
         return None
 
     def update_pos(self, drone: dict, pos: tuple[str, int]) -> bool:
-        id_drone, pos_drone = next(iter(drone.items()))
-        connection = self.get_connection(pos_drone, pos[0])
+        id_drone, data = next(iter(drone.items()))
+        name: str = data[0]
+        connection = self.get_connection(name, pos[0])
         if connection["connection_turn"] + 1 > connection["max_link_capacity"]:
             return False
         connection["connection_turn"] += 1
 
-        if pos_drone == self.start["name"]:
+        if name == self.start["name"]:
             self.start["meta"]["actual_drones"] -= 1
         if pos[0] == self.end["name"]:
             self.end["meta"]["actual_drones"] += 1
 
         for h in self.hub:
-            if h["name"] == pos_drone:
+            if h["name"] == name:
                 h["meta"]["actual_drones"] -= 1
             if h["name"] == pos[0]:
                 h["meta"]["actual_drones"] += 1
 
-        drone.update({id_drone: pos[0]})
+        drone.update({id_drone: [pos[0], True]})
         return True
 
     def reset_connection_turn(self) -> None:
