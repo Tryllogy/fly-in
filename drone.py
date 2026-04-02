@@ -123,9 +123,8 @@ class Drone:
         self,
         drone
     ) -> Any:
-        drone_id, data = next(iter(drone.items()))
+        _, data = next(iter(drone.items()))
         name: str = data[0]
-        waiting: bool = data[1]
         visited: dict[str, int] = {name: 0}
         path: list[str] = [name]
         length: int
@@ -149,6 +148,7 @@ class Drone:
 
         if len(visited) == 1:
             return None
+
         return visited
 
     def move_shortest(
@@ -156,7 +156,7 @@ class Drone:
         drone,
         path
     ) -> bool:
-        actual: tuple[str, int]
+        actual: tuple[str, int] = None
 
         name_closest_end: str = self.get_closest_to_end_from_point(drone, path)
         if name_closest_end is None:
@@ -204,12 +204,13 @@ class Drone:
         if path is None:
             raise ValueError("Path not Found")
 
-        actual: tuple[str, int]
+        actual: tuple[str, int] = None
         for k, v in path.items():
             if k == self.end["name"]:
                 actual = (k, v)
                 break
-        
+        if actual is None:
+            raise ValueError("No path found")
         while actual[1] != 1:
             parents = self.get_parent(actual, path)
             n_parents: int = len(parents)

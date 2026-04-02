@@ -95,7 +95,10 @@ def parse_map(
             elif line.strip().startswith('connection'):
                 connection.append(parse_connection(line.split()))
             elif line.strip().startswith("nb_drones"):
-                n_drones = int(line.split()[1])
+                n_drones_str = line.split()[1]
+                n_drones_str = n_drones_str.replace(",", " ")
+                n_drones_str = n_drones_str.replace(".", " ")
+                n_drones = int(n_drones_str.split(" ")[0])
         except Exception as e:
             raise ValueError(f"Error occurred while parsing line {i + 1}: {e}")
         
@@ -134,4 +137,9 @@ def open_map(map_name: str) -> tuple[int, dict, dict, list, list]:
 
             return n_drones, start, end, hub, connection
     except Exception as e:
-        print(f"Error occurred while opening the map file: {e}")
+        if hasattr(e, "errors") and callable(getattr(e, "errors")):
+            errors = e.errors()
+            if errors:
+                first_error = errors[0].get("msg", "Map validation failed")
+                raise ValueError(first_error)
+        raise ValueError(f"Error occurred while opening the map file: {e}")

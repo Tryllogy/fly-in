@@ -11,7 +11,7 @@ class ZoneEnum(Enum):
 
 
 class ParsingValidator(BaseModel):
-    n_drones: int = Field(...)
+    n_drones: int = Field(lt=2147483647)
     start: dict[str, str | tuple[int, int] | dict[str, str | int]] = Field(...)
     end: dict[str, str | tuple[int, int] | dict[str, str | int]] = Field(...)
     hub: list[
@@ -77,6 +77,9 @@ class ParsingValidator(BaseModel):
                     if not isinstance(val, int):
                         raise ValueError(
                             f"Max link capacity must be an integer: {val}")
+                    elif val <= 0:
+                        raise ValueError(
+                            f"Max link capacity must be a positive integer: {val}")
                 elif key != "connection_turn":
                     if not isinstance(val, str):
                         raise ValueError(

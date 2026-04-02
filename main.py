@@ -14,6 +14,7 @@ def main() -> None:
         drones: Drone = Drone.from_file(sys.argv[1])
     except Exception as e:
         print(f"Error: {e}")
+        sys.exit()
 
     try:
         app: Ursina = Ursina()
@@ -36,6 +37,7 @@ def main() -> None:
         app.run()
     except Exception as e:
         print(f"Error: {e}")
+        sys.exit()
 
 
 if __name__ == "__main__":
