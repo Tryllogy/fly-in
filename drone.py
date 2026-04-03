@@ -19,8 +19,8 @@ class Drone:
         self.end: dict[str, Any] = end
         self.hub: list[dict[str, Any]] = hub
         self.connection: list[dict[str, str | int]] = connection
+        self.connection_not_reset: list[dict[str, str | int]] = []
         self.belonging: list[dict[str | int, list[str | int]]] = []
-
         self.create_drones()
         self.make_belonging()
 
@@ -189,10 +189,16 @@ class Drone:
             return False
 
         drone_id, data = next(iter(drone.items()))
-        if (data[1] and
+        name: str = data[0]
+        waiting: bool = data[1]
+        if (waiting and
                 self.check_status(actual[0], "restricted")):
-            drone[drone_id] = [data[0], False]
+            drone[drone_id] = [name, False]
             return False
+        if (not waiting and
+                self.check_status(actual[0], "restricted")):
+            self.connection_not_reset.append(
+                self.get_connection(name, actual[0]))
         if not self.update_pos(drone, actual):
             return False
         return True
@@ -270,7 +276,9 @@ class Drone:
 
     def reset_connection_turn(self) -> None:
         for c in self.connection:
-            c["connection_turn"] = 0
+            if c not in self.connection_not_reset:
+                c["connection_turn"] = 0
+        self.connection_not_reset.clear()
 
     def get_parent(
         self,

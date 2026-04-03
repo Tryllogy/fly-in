@@ -1,18 +1,35 @@
 from entities import drone_entity, hub_entity
 from ursina import (Entity, Vec3, color,
-                    Mesh, BoxCollider, DirectionalLight, Sky)
+                    Mesh, BoxCollider, DirectionalLight, Sky, Text)
 from ursina.prefabs.first_person_controller import FirstPersonController
 from drone import Drone
 from typing import Generator, Any
 
 
 class Graphic:
+    def put_turns(
+        self,
+        turns: int
+    ) -> None:
+        if hasattr(self, "label") and self.label is not None:
+            setattr(self.label, "text", f"Turns: {turns}")
+            return
+
+        self.label: Text = Text(
+            text=f"Turns: {turns}",
+            origin=(0, -8),
+            scale=2,
+            background=True,
+            ignore_paused=True
+        )
+
     def next_input(self, key: str) -> None:
         if key == 'escape':
             quit()
 
         if key == "n":
             drone_entity.DroneEntity.add_turn()
+            self.put_turns(drone_entity.DroneEntity.turn)
 
     def input(self, key: str) -> None:
         if key == 'escape':
@@ -78,7 +95,7 @@ class Graphic:
             )
 
     def set_ground(self, scale: int) -> None:
-        Entity(
+        self.gound: Entity = Entity(
             model='plane',
             collider='box',
             scale=scale,
@@ -87,7 +104,7 @@ class Graphic:
         )
 
     def set_player(self) -> None:
-        player: FirstPersonController = FirstPersonController(
+        self.player: FirstPersonController = FirstPersonController(
             z=-10,
             color=color.orange,
             origin_y=-.5,
@@ -97,8 +114,8 @@ class Graphic:
             y=2,
             ignore_paused=True
         )
-        player.collider = BoxCollider(
-            player,
+        self.player.collider = BoxCollider(
+            self.player,
             Vec3(0, 1, 0),
             Vec3(1, 2, 1)
         )
@@ -184,8 +201,8 @@ class Graphic:
         return drones_entities
 
     def set_sky(self) -> None:
-        sun: DirectionalLight = DirectionalLight()
-        sun.look_at(Vec3(1, -1, -1))
+        self.sun: DirectionalLight = DirectionalLight()
+        self.sun.look_at(Vec3(1, -1, -1))
         Sky()
 
     def get_turns(

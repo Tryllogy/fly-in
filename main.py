@@ -21,7 +21,7 @@ def main() -> None:
         space: int = 3
         graphic: Graphic = Graphic()
         graphic.set_sky()
-        graphic.set_ground(max((len(drones.hub) + 2) * 3, 30))
+        graphic.set_ground(max((len(drones.hub) + 2) * 3, 50))
         graphic.set_player()
         start: hub_entity.HubEntity = graphic.set_spawn(space, drones.start)
         end: hub_entity.HubEntity = graphic.set_end(space, drones.end)
