@@ -3,23 +3,24 @@ from ursina import (Entity, Vec3, color,
                     Mesh, BoxCollider, DirectionalLight, Sky)
 from ursina.prefabs.first_person_controller import FirstPersonController
 from drone import Drone
-from typing import Generator
+from typing import Generator, Any
+
 
 class Graphic:
-    def next_input(self, key) -> None:
+    def next_input(self, key: str) -> None:
         if key == 'escape':
             quit()
 
         if key == "n":
             drone_entity.DroneEntity.add_turn()
 
-    def input(self, key):
+    def input(self, key: str) -> None:
         if key == 'escape':
             quit()
 
     def get_texture(
         self,
-        hub: dict[str, str | tuple[int, int] | dict[str, str | int]]
+        hub: dict[str, Any]
     ) -> str:
         if hub["meta"]["color"] == "rainbow":
             return "rainbow"
@@ -29,7 +30,7 @@ class Graphic:
     def get_color(
         self,
         color_str: str
-    ) -> color:
+    ) -> Any:
         if (hasattr(color, color_str)):
             return getattr(color, color_str)
         else:
@@ -42,26 +43,26 @@ class Graphic:
     ) -> None:
 
         for c in drones.connection:
-            vertices: list = []
-            zone_1: str = c["1"]
-            zone_2: str = c["2"]
+            vertices: list[Vec3] = []
+            zone_1: str = str(c["1"])
+            zone_2: str = str(c["2"])
 
             if zone_1 == "start":
-                pos_zone_1 = drones.start["position"]
-                pos_zone_2 = [hub["position"]
-                            for hub in drones.hub
-                            if hub["name"] == zone_2][0]
+                pos_zone_1: tuple[int, int] = drones.start["position"]
+                pos_zone_2: tuple[int, int] = [hub["position"]
+                                               for hub in drones.hub
+                                               if hub["name"] == zone_2][0]
 
             else:
                 pos_zone_1 = [hub["position"]
-                            for hub in drones.hub
-                            if hub["name"] == zone_1][0]
+                              for hub in drones.hub
+                              if hub["name"] == zone_1][0]
                 if "goal" in zone_2:
                     pos_zone_2 = drones.end["position"]
                 else:
                     pos_zone_2 = [hub["position"]
-                                for hub in drones.hub
-                                if hub["name"] == zone_2][0]
+                                  for hub in drones.hub
+                                  if hub["name"] == zone_2][0]
 
             pos_x: int = pos_zone_1[0] * space
             pos_y: int = pos_zone_1[1] * space
@@ -76,8 +77,7 @@ class Graphic:
                 color=color.white
             )
 
-
-    def set_ground(self, scale: int):
+    def set_ground(self, scale: int) -> None:
         Entity(
             model='plane',
             collider='box',
@@ -85,7 +85,6 @@ class Graphic:
             texture='grass',
             texture_scale=(4, 4)
         )
-
 
     def set_player(self) -> None:
         player: FirstPersonController = FirstPersonController(
@@ -104,17 +103,16 @@ class Graphic:
             Vec3(1, 2, 1)
         )
 
-
     def set_spawn(
         self,
         space: int,
-        start: dict[str, str | tuple[int, int]
-                    | dict[str, str | int]]
-    ) -> None:
-        pos_x: int = start["position"][0] * space
-        pos_y: int = start["position"][1] * space
-        name: str = start["name"]
-        color_point: color = self.get_color(start["meta"]["color"])
+        start: dict[str, Any]
+    ) -> hub_entity.HubEntity:
+        pos_x: int = int(start["position"][0]) * space
+        pos_y: int = int(start["position"][1]) * space
+        name: str = str(start["name"])
+        color_point: Any = self.get_color(str(
+            start["meta"]["color"]))
         texture: str = self.get_texture(start)
 
         return hub_entity.HubEntity(
@@ -122,20 +120,20 @@ class Graphic:
             pos_y=pos_y,
             color_point=color_point,
             texture=texture,
-            name=name
-            )
-
+            name=name,
+            type_zone=str(start["meta"]["zone"])
+        )
 
     def set_end(
         self,
         space: int,
-        end: dict[str, str | tuple[int, int]
-                | dict[str, str | int]]
-    ) -> None:
-        pos_x = end["position"][0] * space
-        pos_y = end["position"][1] * space
-        name: str = end["name"]
-        color_point: color = self.get_color(end["meta"]["color"])
+        end: dict[str, Any]
+    ) -> hub_entity.HubEntity:
+        pos_x: int = int(end["position"][0]) * space
+        pos_y: int = int(end["position"][1]) * space
+        name: str = str(end["name"])
+        color_point: Any = self.get_color(
+            str(end["meta"]["color"]))
         texture: str = self.get_texture(end)
 
         return hub_entity.HubEntity(
@@ -143,25 +141,45 @@ class Graphic:
             pos_y=pos_y,
             color_point=color_point,
             texture=texture,
-            name=name
-            )
+            name=name,
+            type_zone=str(end["meta"]["zone"])
+        )
 
-
-    def set_hubs(self, start, end, space: int, drones) -> list:
-        hub_entities: list = [start, end]
+    def set_hubs(
+        self,
+        start: hub_entity.HubEntity,
+        end: hub_entity.HubEntity,
+        space: int,
+        drones: Drone
+    ) -> list[hub_entity.HubEntity]:
+        hub_entities: list[hub_entity.HubEntity] = [start, end]
         for h in drones.hub:
-            pos_x: int = h["position"][0] * space
-            pos_y: int = h["position"][1] * space
-            color_point: color = self.get_color(h["meta"]["color"])
+            pos_x: int = int(h["position"][0]) * space
+            pos_y: int = int(h["position"][1]) * space
+            color_point: Any = self.get_color(
+                str(h["meta"]["color"]))
             texture: str = self.get_texture(h)
-            hub_entities.append(hub_entity.HubEntity(pos_x=pos_x, pos_y=pos_y, color_point=color_point, texture=texture, name=h["name"]))
-        
+            hub_entities.append(hub_entity.HubEntity(pos_x=pos_x,
+                                                     pos_y=pos_y,
+                                                     color_point=color_point,
+                                texture=texture,
+                                name=str(h["name"]),
+                                type_zone=str(h["meta"]["zone"])))
+
         return hub_entities
 
-    def set_drones(self,drones, hubs) -> list:
+    def set_drones(
+        self,
+        drones: Drone,
+        hubs: list[hub_entity.HubEntity]
+    ) -> list[drone_entity.DroneEntity]:
         drones_entities: list[drone_entity.DroneEntity] = []
         for i in range(drones.n_drones):
-            drones_entities.append(drone_entity.DroneEntity(i + 1, drones.start["position"][0], drones.start["position"][1], hubs))
+            drones_entities.append(drone_entity.DroneEntity(
+                i + 1,
+                int(drones.start["position"][0]),
+                int(drones.start["position"][1]),
+                hubs))
 
         return drones_entities
 
@@ -170,28 +188,31 @@ class Graphic:
         sun.look_at(Vec3(1, -1, -1))
         Sky()
 
-
-    def get_turns(self, drones, start) -> list:
-        movements: Generator = drones.move_drones()
-        all_movements: list[dict] = []
+    def get_turns(
+        self,
+        drones: Drone,
+        start: hub_entity.HubEntity
+    ) -> dict[int, list[dict[int, str]]]:
+        movements: Generator[Any, None, None] = drones.move_drones()
+        all_movements: list[dict[int, str]] = []
         turn: int = 1
-        turns: dict = {0: []}
+        turns: dict[int, list[dict[int, str]]] = {0: []}
         for drone in drones.drones:
             id_drone, name = next(iter(drone.items()))
-            copy = {id_drone: start.name}
+            copy: dict[int, str] = {id_drone: start.name}
             turns[0].append(copy)
-        while 1:
+        while True:
             try:
-                drone: dict | int = next(movements)
-                if isinstance(drone, dict):
-                    id_drone, zone_name = next(iter(drone.items()))
+                drone_item: dict[int, str] | int = next(movements)
+                if isinstance(drone_item, dict):
+                    id_drone, zone_name = next(iter(drone_item.items()))
                     copy = {id_drone: zone_name}
                     all_movements.append(copy)
                 else:
                     turns.update({turn: all_movements.copy()})
                     turn += 1
                     all_movements.clear()
-            except StopIteration as e:
+            except StopIteration:
                 break
 
         return turns

@@ -10,24 +10,25 @@ def parse_dict(lst: list[str]) -> dict[str, str | int]:
         if len(tmp) < 2:
             raise ValueError(f"Invalid meta format: {word}")
         key: str = tmp[0].removeprefix('[').strip()
-        val: str | int = tmp[1].removesuffix(']').strip()
-        val = int(val) if val.isdigit() else val
+        val_str: str = tmp[1].removesuffix(']').strip()
+        val: str | int = int(val_str) if val_str.isdigit() else val_str
         if not (key == "zone" or key == "max_drones" or key == "color"):
             raise ValueError(f"Invalid meta key: {key}")
         meta.update({key: val})
 
+    if "zone" not in meta:
+        meta.update({"zone": "normal"})
     meta.update({"actual_drones": 0})
     return meta
 
 
 def parse_meta_data(
     line: str
-) -> dict[str, tuple[int, int] | dict[str, str | int]]:
+) -> dict[str, Any]:
     words: list[str] = line.split()
-
     name: str = words[1].strip()
     position: tuple[int, int] = (int(words[2].strip()), int(words[3].strip()))
-    dict_meta = parse_dict(words[4:])
+    dict_meta: dict[str, str | int] = parse_dict(words[4:])
 
     return {
         "name": name,
@@ -36,7 +37,7 @@ def parse_meta_data(
     }
 
 
-def parse_connection(words: list[str]) -> dict[str, str]:
+def parse_connection(words: list[str]) -> dict[str, str | int]:
     zones: list[str] = words[1].split("-")
 
     if len(words) == 3:
@@ -49,7 +50,7 @@ def parse_connection(words: list[str]) -> dict[str, str]:
             raise ValueError(
                 f"Invalid connection meta key: {max_link_capacity_words[0]}")
     else:
-        max_link_capacity: int = 1
+        max_link_capacity = 1
     return {
         "1": zones[0],
         "2": zones[1],
@@ -60,14 +61,17 @@ def parse_connection(words: list[str]) -> dict[str, str]:
 
 def parse_map(
     map: str
-) -> Any:
+) -> tuple[int, dict[str, Any],
+           dict[str, Any],
+           list[dict[str, Any]],
+           list[dict[str, str | int]]]:
     n_drones: int = 0
-    start: dict[str, tuple[int, int] | dict[str, str | int]] = {}
-    end: dict[str, tuple[int, int] | dict[str, str | int]] = {}
-    hub: list[dict[str, tuple[int, int] | dict[str, str | int]]] = []
-    connection: list[dict[str, str]] = []
+    start: dict[str, Any] = {}
+    end: dict[str, Any] = {}
+    hub: list[dict[str, Any]] = []
+    connection: list[dict[str, str | int]] = []
 
-    lines = map.split("\n")
+    lines: list[str] = map.split("\n")
     start_count: int = 0
     end_count: int = 0
 
@@ -95,25 +99,28 @@ def parse_map(
             elif line.strip().startswith('connection'):
                 connection.append(parse_connection(line.split()))
             elif line.strip().startswith("nb_drones"):
-                n_drones_str = line.split()[1]
+                n_drones_str: str = line.split()[1]
                 n_drones_str = n_drones_str.replace(",", " ")
                 n_drones_str = n_drones_str.replace(".", " ")
                 n_drones = int(n_drones_str.split(" ")[0])
         except Exception as e:
             raise ValueError(f"Error occurred while parsing line {i + 1}: {e}")
-        
+
     end["meta"].update({"max_drones": n_drones})
     start["meta"]["actual_drones"] = n_drones
     start["meta"]["max_drones"] = n_drones
     return n_drones, start, end, hub, connection
 
 
-def open_map(map_name: str) -> tuple[int, dict, dict, list, list]:
+def open_map(map_name: str) -> tuple[int, dict[str, Any],
+                                     dict[str, Any],
+                                     list[dict[str, Any]],
+                                     list[dict[str, str | int]]]:
     n_drones: int = 0
-    start: dict[str, str | tuple[int, int] | dict[str, str | int]] = {}
-    end: dict[str, str | tuple[int, int] | dict[str, str | int]] = {}
-    hub: list[dict[str, str | tuple[int, int] | dict[str, str | int]]] = []
-    connection: list[dict[str, str]] = []
+    start: dict[str, Any] = {}
+    end: dict[str, Any] = {}
+    hub: list[dict[str, Any]] = []
+    connection: list[dict[str, str | int]] = []
 
     try:
         with open(map_name, "r") as f:
@@ -138,8 +145,9 @@ def open_map(map_name: str) -> tuple[int, dict, dict, list, list]:
             return n_drones, start, end, hub, connection
     except Exception as e:
         if hasattr(e, "errors") and callable(getattr(e, "errors")):
-            errors = e.errors()
+            errors: list[dict[str, str]] = e.errors()
             if errors:
-                first_error = errors[0].get("msg", "Map validation failed")
+                first_error: str = errors[0].get("msg",
+                                                 "Map validation failed")
                 raise ValueError(first_error)
         raise ValueError(f"Error occurred while opening the map file: {e}")

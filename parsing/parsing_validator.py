@@ -1,38 +1,37 @@
 from pydantic import BaseModel, Field, field_validator, model_validator
 from enum import Enum
+from typing import Any
 from typing_extensions import Self
 
 
 class ZoneEnum(Enum):
-    NORMAL: int = 1
-    BLOCKED: int = 2
-    RESTRICTED: int = 3
-    PRIORITY: int = 4
+    NORMAL = 1
+    BLOCKED = 2
+    RESTRICTED = 3
+    PRIORITY = 4
 
 
 class ParsingValidator(BaseModel):
     n_drones: int = Field(lt=2147483647)
-    start: dict[str, str | tuple[int, int] | dict[str, str | int]] = Field(...)
-    end: dict[str, str | tuple[int, int] | dict[str, str | int]] = Field(...)
-    hub: list[
-        dict[str, str | tuple[int, int] | dict[str, str | int]]] = Field(...)
+    start: dict[str, Any] = Field(...)
+    end: dict[str, Any] = Field(...)
+    hub: list[dict[str, Any]] = Field(...)
     connection: list[dict[str, str | int]] = Field(...)
 
-    @classmethod
+    @staticmethod
     def check_name(
-        cls: "ParsingValidator",
         value: str
     ) -> None:
         if " " in value or "-" in value:
             raise ValueError(
                 f"Zone name cannot contain spaces or dashes: {value}")
 
-    @classmethod
+    @staticmethod
     def meta(
-        cls: "ParsingValidator",
-        value: dict[str, str | int]
+        value: dict[str, Any]
     ) -> None:
-        for key, val in value["meta"].items():
+        meta_dict: Any = value.get("meta", {})
+        for key, val in meta_dict.items():
             if not isinstance(key, str):
                 raise ValueError(f"Meta keys must be strings: {key}")
             if not isinstance(val, (str, int)):
@@ -45,17 +44,18 @@ class ParsingValidator(BaseModel):
                 if len(words) >= 2:
                     raise ValueError(f"Color must be a single string: {val}")
             if key == "max_drones":
-                if val < 0:
+                if isinstance(val, int) and val < 0:
                     raise ValueError(
                         f"Max drones must be a positive integer: {val}")
             if key == "zone":
-                if val.upper() not in [zone.name for zone in ZoneEnum]:
+                if (isinstance(val, str) and val.upper() not
+                        in [zone.name for zone in ZoneEnum]):
                     raise ValueError(f"Invalid zone type: {val}")
 
     @field_validator("n_drones")
     @classmethod
     def validate_drones(
-        cls: "ParsingValidator",
+        cls: type["ParsingValidator"],
         value: int
     ) -> int:
         if (value <= 0):
@@ -66,11 +66,11 @@ class ParsingValidator(BaseModel):
     @field_validator("connection")
     @classmethod
     def validate_connection(
-        cls: "ParsingValidator",
-        value: list[str]
-    ) -> list[str]:
+        cls: type["ParsingValidator"],
+        value: list[dict[str, str | int]]
+    ) -> list[dict[str, str | int]]:
         if not isinstance(value, list):
-            raise ValueError(f"Connection must be a list of strings: {value}")
+            raise ValueError(f"Connection must be a list of dicts: {value}")
         for item in value:
             for key, val in item.items():
                 if key == "max_link_capacity":
@@ -79,7 +79,8 @@ class ParsingValidator(BaseModel):
                             f"Max link capacity must be an integer: {val}")
                     elif val <= 0:
                         raise ValueError(
-                            f"Max link capacity must be a positive integer: {val}")
+                            f"Max link capacity must be a "
+                            f"positive integer: {val}")
                 elif key != "connection_turn":
                     if not isinstance(val, str):
                         raise ValueError(

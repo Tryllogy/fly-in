@@ -1,27 +1,25 @@
-from typing import Any, Optional, Generator
+from typing import Any, Generator
 from copy import deepcopy
+
 
 class Drone:
     turn: int = 0
-    
+
     def __init__(
         self,
         n_drones: int,
-        start: dict[str, str | tuple[int, int] | dict[str, str | int]],
-        end: dict[str, str | tuple[int, int] | dict[str, str | int]],
-        hub: list[dict[str, str | tuple[int, int] | dict[str, str | int]]],
+        start: dict[str, Any],
+        end: dict[str, Any],
+        hub: list[dict[str, Any]],
         connection: list[dict[str, str | int]]
     ) -> None:
         self.n_drones: int = n_drones
-        self.drones: list[dict[int, dict[str, str | tuple[int, int]
-                            | dict[str, str | int]]]] = []
-        self.start: dict[str, str | tuple[int, int]
-                         | dict[str, str | int]] = start
-        self.end: dict[str, str | tuple[int, int] | dict[str, str | int]] = end
-        self.hub: list[dict[str, str | tuple[int, int]
-                            | dict[str, str | int]]] = hub
+        self.drones: list[dict[int, list[str | bool]]] = []
+        self.start: dict[str, Any] = start
+        self.end: dict[str, Any] = end
+        self.hub: list[dict[str, Any]] = hub
         self.connection: list[dict[str, str | int]] = connection
-        self.belonging: list[dict[str, list[str]]] = []
+        self.belonging: list[dict[str | int, list[str | int]]] = []
 
         self.create_drones()
         self.make_belonging()
@@ -48,59 +46,66 @@ class Drone:
         for d in self.drones:
             print(f"Drone {list(d.keys())[0]}: {list(d.values())[0]}")
 
-
     def create_drones(self) -> None:
         for i in range(1, self.n_drones + 1):
             self.drones.append({
                 i: [self.start["name"], True]
             })
-            
+
     def make_belonging(self) -> None:
-        names: set[str] = set()
+        names: set[str | int] = set()
         for con in self.connection:
-            if con["1"] not in names:
-                names.add(con["1"])
-                self.belonging.append({con["1"]: []})
-                
-            if con["2"] not in names:
-                names.add(con["2"])
-                self.belonging.append({con["2"]: []})
+            if con.get("1") not in names:
+                names.add(con.get("1", ""))
+                self.belonging.append({con.get("1", ""): []})
+
+            if con.get("2") not in names:
+                names.add(con.get("2", ""))
+                self.belonging.append({con.get("2", ""): []})
 
             for belong in self.belonging:
                 for key, v in belong.items():
-                    if key == con["1"]:
-                        belong[con["1"]].append(con["2"])
-                        parent: Optional[str] = self.make_parents(con["1"])
+                    if key == con.get("1"):
+                        belong[con.get("1", "")].append(
+                            con.get("2", ""))
+                        parent: str | None = self.make_parents(
+                            str(con.get("1", "")))
                         if parent is not None and parent not in v:
-                            belong[con["1"]].append(parent)
-                    
-                    if key == con["2"]:
-                        belong[con["2"]].append(con["1"])
-                        parent: Optional[str] = self.make_parents(con["2"])
+                            belong[con.get("1", "")].append(
+                                parent)
+
+                    if key == con.get("2"):
+                        belong[con.get("2", "")].append(
+                            con.get("1", ""))
+                        parent = self.make_parents(
+                            str(con.get("2", "")))
                         if parent is not None and parent not in v:
-                            belong[con["2"]].append(parent)
-                            
+                            belong[con.get("2", "")].append(
+                                parent)
 
     def make_parents(
-        self, 
+        self,
         name: str
-    ) -> str:
+    ) -> str | None:
         for b in self.belonging:
             for k, v in b.items():
                 if name in v:
-                    return k
+                    return str(k)
         return None
 
-    def move_drones(self) -> Generator:
+    def move_drones(
+        self
+    ) -> Generator[dict[int, list[str | bool]] | int, None, None]:
         turn: int = 0
         print()
-        while self.end["meta"]["actual_drones"] != self.n_drones:
+        while self.end["meta"]["actual_drones"] != \
+                self.n_drones:
             moved: int = 0
             for d in self.drones:
                 id_drone, data = next(iter(d.items()))
                 if data[0] == self.end["name"]:
                     continue
-            
+
                 path = self.step(d)
                 if path is None:
                     continue
@@ -115,13 +120,13 @@ class Drone:
             turn += 1
             self.reset_connection_turn()
             yield moved
-        
+
         print("\nTotal turns : ", turn)
         return
 
     def step(
         self,
-        drone
+        drone: Any
     ) -> Any:
         _, data = next(iter(drone.items()))
         name: str = data[0]
@@ -132,13 +137,14 @@ class Drone:
         while len(path) >= 1:
             actual: str = path.pop()
             length = visited[actual]
-            neighbors: list = self.get_neighbors(actual)
+            neighbors: list[Any] = self.get_neighbors(actual)
 
             if neighbors is None:
                 raise ValueError("No neighbors found")
 
             for n in neighbors:
-                if (n not in visited and not self.check_status(name, "blocked")):
+                if (n not in visited and
+                        not self.check_status(name, "blocked")):
                     visited.update({n: length + 1})
                     path.append(n)
                 elif (n in visited and not self.check_status(name, "blocked")):
@@ -153,12 +159,13 @@ class Drone:
 
     def move_shortest(
         self,
-        drone,
-        path
+        drone: Any,
+        path: Any
     ) -> bool:
-        actual: tuple[str, int] = None
+        actual: tuple[str, int] | None = None
 
-        name_closest_end: str = self.get_closest_to_end_from_point(drone, path)
+        name_closest_end: str | None = self.get_closest_to_end_from_point(
+            drone, path)
         if name_closest_end is None:
             return False
         for k, v in path.items():
@@ -166,7 +173,7 @@ class Drone:
                 actual = (k, v)
                 break
 
-        while actual[1] != 1:
+        while actual is not None and actual[1] != 1:
             parents = self.get_parent(actual, path)
             n_parents: int = len(parents)
             if n_parents == 0:
@@ -177,34 +184,36 @@ class Drone:
                 if self.check_status(p[0], "priority"):
                     break
 
+        assert actual is not None
         if not self.check_capacity(actual[0]):
             return False
-        
+
         drone_id, data = next(iter(drone.items()))
-        if data[1] and self.check_status(actual[0], "restricted"):
+        if (data[1] and
+                self.check_status(actual[0], "restricted")):
             drone[drone_id] = [data[0], False]
-            return None
+            return False
         if not self.update_pos(drone, actual):
             return False
         return True
 
     def get_closest_to_end_from_point(
         self,
-        drone,
-        true_path
-    ) -> str:
+        drone: Any,
+        true_path: Any
+    ) -> str | None:
         saved_connection = deepcopy(self.connection)
         false_connection = deepcopy(self.connection)
         for f_c in false_connection:
             f_c["connection_turn"] = 0
-        
+
         self.connection = false_connection
         path = self.step(drone)
 
         if path is None:
             raise ValueError("Path not Found")
 
-        actual: tuple[str, int] = None
+        actual: tuple[str, int] | None = None
         for k, v in path.items():
             if k == self.end["name"]:
                 actual = (k, v)
@@ -215,7 +224,7 @@ class Drone:
             parents = self.get_parent(actual, path)
             n_parents: int = len(parents)
             if n_parents == 0:
-                return False
+                return None
 
             for parent in parents:
                 actual = parent
@@ -229,11 +238,19 @@ class Drone:
         self.connection = saved_connection
         return None
 
-    def update_pos(self, drone: dict, pos: tuple[str, int]) -> bool:
+    def update_pos(
+        self,
+            drone: dict[Any, Any],
+            pos: tuple[str, int] | None
+    ) -> bool:
+        if pos is None:
+            return False
+
         id_drone, data = next(iter(drone.items()))
         name: str = data[0]
         connection = self.get_connection(name, pos[0])
-        if connection["connection_turn"] + 1 > connection["max_link_capacity"]:
+        if connection["connection_turn"] + 1 > \
+                connection["max_link_capacity"]:
             return False
         connection["connection_turn"] += 1
 
@@ -258,8 +275,8 @@ class Drone:
     def get_parent(
         self,
         actual: tuple[str, int],
-        path
-    ) -> tuple[str, int]:
+        path: Any
+    ) -> list[tuple[str, int]]:
         possible_neighbors: list[tuple[str, int]] = []
         for k, v in path.items():
             if v == actual[1] - 1:
@@ -280,19 +297,25 @@ class Drone:
                         return True
 
         return False
-    
+
     def check_capacity(
         self,
         name: str
     ) -> bool:
         if name == self.start["name"]:
-            return self.start["meta"]["actual_drones"] + 1 <=  self.start["meta"]["max_drones"]
+            actual_drones: int = int(self.start["meta"]["actual_drones"])
+            max_drones: int = int(self.start["meta"]["max_drones"])
+            return actual_drones + 1 <= max_drones
         if name == self.end["name"]:
-            return self.end["meta"]["actual_drones"] + 1 <=  self.end["meta"]["max_drones"]
+            actual_drones = int(self.end["meta"]["actual_drones"])
+            max_drones = int(self.end["meta"]["max_drones"])
+            return actual_drones + 1 <= max_drones
 
         for h in self.hub:
             if h["name"] == name:
-                return h["meta"]["actual_drones"] + 1 <= h["meta"]["max_drones"]
+                actual_drones = int(h["meta"]["actual_drones"])
+                max_drones = int(h["meta"]["max_drones"])
+                return actual_drones + 1 <= max_drones
 
         return False
 
@@ -311,33 +334,33 @@ class Drone:
 
     def get_neighbors(
         self,
-        name
-    ) -> list:
-        neighbors: list = []
+        name: str
+    ) -> list[Any]:
+        neighbors: list[Any] = []
         for b in self.belonging:
             for k, v in b.items():
                 if k == name:
                     neighbors = v
                     break
 
-        filtered_neighbors: list = []
+        filtered_neighbors: list[Any] = []
         for n in neighbors:
             connection = self.get_connection(name, n)
-            if connection["connection_turn"] < connection["max_link_capacity"]:
+            if connection["connection_turn"] < \
+                    connection["max_link_capacity"]:
                 filtered_neighbors.append(n)
 
         return filtered_neighbors
-    
-    
+
     def get_connection(
         self,
         con_1: str,
         con_2: str
-    ) -> Any: 
+    ) -> Any:
         for c in self.connection:
-            if c["1"] == con_1 and c["2"] == con_2:
+            if c.get("1") == con_1 and c.get("2") == con_2:
                 return c
-            if c["2"] == con_1 and c["1"] == con_2:
+            if c.get("2") == con_1 and c.get("1") == con_2:
                 return c
-        
+
         return None

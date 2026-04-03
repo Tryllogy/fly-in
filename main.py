@@ -1,6 +1,6 @@
 from drone import Drone
 from ursina import (Ursina, Entity)
-from entities import drone_entity
+from entities import drone_entity, hub_entity
 from graphic import Graphic
 import sys
 
@@ -19,17 +19,23 @@ def main() -> None:
     try:
         app: Ursina = Ursina()
         space: int = 3
-        graphic = Graphic()
+        graphic: Graphic = Graphic()
         graphic.set_sky()
         graphic.set_ground(max((len(drones.hub) + 2) * 3, 30))
         graphic.set_player()
-        start: Entity = graphic.set_spawn(space, drones.start)
-        end: Entity = graphic.set_end(space, drones.end)
-        hub_entities: list = graphic.set_hubs(start, end, space, drones)
+        start: hub_entity.HubEntity = graphic.set_spawn(space, drones.start)
+        end: hub_entity.HubEntity = graphic.set_end(space, drones.end)
+        hub_entities: list[hub_entity.HubEntity] = (
+            graphic.set_hubs(start, end, space, drones)
+        )
         graphic.set_connections(space, drones)
-        drones_entities: list = graphic.set_drones(drones, hub_entities)
-        
-        all_turns: dict = graphic.get_turns(drones, start)
+        drones_entities: list[drone_entity.DroneEntity] = (
+            graphic.set_drones(drones, hub_entities)
+        )
+
+        all_turns: dict[int, list[dict[int, str]]] = (
+            graphic.get_turns(drones, start)
+        )
         for d in drones_entities:
             d.all_turns = all_turns
         drone_entity.DroneEntity.set_max_turn(all_turns)
