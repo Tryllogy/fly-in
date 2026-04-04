@@ -26,7 +26,7 @@ class Drone:
 
     @classmethod
     def from_file(cls, file_path: str) -> "Drone":
-        from parsing.parsing import open_map
+        from parsing import open_map
         n_drones, start, end, hub, connection = open_map(file_path)
         return cls(n_drones, start, end, hub, connection)
 
@@ -144,16 +144,13 @@ class Drone:
 
             for n in neighbors:
                 if (n not in visited and
-                        not self.check_status(name, "blocked")):
+                        not self.check_status(n, "blocked")):
                     visited.update({n: length + 1})
                     path.append(n)
-                elif (n in visited and not self.check_status(name, "blocked")):
+                elif (n in visited and not self.check_status(n, "blocked")):
                     if length + 1 < visited[n]:
                         visited.update({n: length + 1})
                         path.append(n)
-
-        if len(visited) == 1:
-            return None
 
         return visited
 

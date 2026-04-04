@@ -1,12 +1,21 @@
-from entities import drone_entity, hub_entity
+from drone_entity import DroneEntity
 from ursina import (Entity, Vec3, color,
                     Mesh, BoxCollider, DirectionalLight, Sky, Text)
 from ursina.prefabs.first_person_controller import FirstPersonController
 from drone import Drone
 from typing import Generator, Any
+from hub_entity import HubEntity
 
 
 class Graphic:
+    def __init__(
+        self,
+        start,
+        end
+    ) -> None:
+        self.start = start
+        self.end = end
+
     def put_turns(
         self,
         turns: int
@@ -28,8 +37,8 @@ class Graphic:
             quit()
 
         if key == "n":
-            drone_entity.DroneEntity.add_turn()
-            self.put_turns(drone_entity.DroneEntity.turn)
+            DroneEntity.add_turn()
+            self.put_turns(DroneEntity.turn)
 
     def input(self, key: str) -> None:
         if key == 'escape':
@@ -64,7 +73,7 @@ class Graphic:
             zone_1: str = str(c["1"])
             zone_2: str = str(c["2"])
 
-            if zone_1 == "start":
+            if zone_1 == self.start["name"]:
                 pos_zone_1: tuple[int, int] = drones.start["position"]
                 pos_zone_2: tuple[int, int] = [hub["position"]
                                                for hub in drones.hub
@@ -74,7 +83,7 @@ class Graphic:
                 pos_zone_1 = [hub["position"]
                               for hub in drones.hub
                               if hub["name"] == zone_1][0]
-                if "goal" in zone_2:
+                if self.end["name"] == zone_2:
                     pos_zone_2 = drones.end["position"]
                 else:
                     pos_zone_2 = [hub["position"]
@@ -124,7 +133,7 @@ class Graphic:
         self,
         space: int,
         start: dict[str, Any]
-    ) -> hub_entity.HubEntity:
+    ) -> HubEntity:
         pos_x: int = int(start["position"][0]) * space
         pos_y: int = int(start["position"][1]) * space
         name: str = str(start["name"])
@@ -132,7 +141,7 @@ class Graphic:
             start["meta"]["color"]))
         texture: str = self.get_texture(start)
 
-        return hub_entity.HubEntity(
+        return HubEntity(
             pos_x=pos_x,
             pos_y=pos_y,
             color_point=color_point,
@@ -145,7 +154,7 @@ class Graphic:
         self,
         space: int,
         end: dict[str, Any]
-    ) -> hub_entity.HubEntity:
+    ) -> HubEntity:
         pos_x: int = int(end["position"][0]) * space
         pos_y: int = int(end["position"][1]) * space
         name: str = str(end["name"])
@@ -153,7 +162,7 @@ class Graphic:
             str(end["meta"]["color"]))
         texture: str = self.get_texture(end)
 
-        return hub_entity.HubEntity(
+        return HubEntity(
             pos_x=pos_x,
             pos_y=pos_y,
             color_point=color_point,
@@ -164,19 +173,19 @@ class Graphic:
 
     def set_hubs(
         self,
-        start: hub_entity.HubEntity,
-        end: hub_entity.HubEntity,
+        start: HubEntity,
+        end: HubEntity,
         space: int,
         drones: Drone
-    ) -> list[hub_entity.HubEntity]:
-        hub_entities: list[hub_entity.HubEntity] = [start, end]
+    ) -> list[HubEntity]:
+        hub_entities: list[HubEntity] = [start, end]
         for h in drones.hub:
             pos_x: int = int(h["position"][0]) * space
             pos_y: int = int(h["position"][1]) * space
             color_point: Any = self.get_color(
                 str(h["meta"]["color"]))
             texture: str = self.get_texture(h)
-            hub_entities.append(hub_entity.HubEntity(pos_x=pos_x,
+            hub_entities.append(HubEntity(pos_x=pos_x,
                                                      pos_y=pos_y,
                                                      color_point=color_point,
                                 texture=texture,
@@ -188,11 +197,11 @@ class Graphic:
     def set_drones(
         self,
         drones: Drone,
-        hubs: list[hub_entity.HubEntity]
-    ) -> list[drone_entity.DroneEntity]:
-        drones_entities: list[drone_entity.DroneEntity] = []
+        hubs: list[HubEntity]
+    ) -> list[DroneEntity]:
+        drones_entities: list[DroneEntity] = []
         for i in range(drones.n_drones):
-            drones_entities.append(drone_entity.DroneEntity(
+            drones_entities.append(DroneEntity(
                 i + 1,
                 int(drones.start["position"][0]),
                 int(drones.start["position"][1]),
@@ -208,7 +217,7 @@ class Graphic:
     def get_turns(
         self,
         drones: Drone,
-        start: hub_entity.HubEntity
+        start: HubEntity
     ) -> dict[int, list[dict[int, str]]]:
         movements: Generator[Any, None, None] = drones.move_drones()
         all_movements: list[dict[int, str]] = []

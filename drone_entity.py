@@ -1,6 +1,6 @@
 from ursina import (Entity, Vec3, color, curve,
                     Text)
-from .hub_entity import HubEntity
+from hub_entity import HubEntity
 
 
 class DroneEntity(Entity):

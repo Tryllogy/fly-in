@@ -44,7 +44,8 @@ class ParsingValidator(BaseModel):
                 if len(words) >= 2:
                     raise ValueError(f"Color must be a single string: {val}")
             if key == "max_drones":
-                if isinstance(val, int) and val < 0:
+                if (isinstance(val, int) and val <= 0) or \
+                    (isinstance(val, str) and not val.isdigit()):
                     raise ValueError(
                         f"Max drones must be a positive integer: {val}")
             if key == "zone":

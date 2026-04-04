@@ -1,5 +1,5 @@
 from typing import Any
-from .parsing_validator import ParsingValidator
+from parsing_validator import ParsingValidator
 
 
 def parse_dict(lst: list[str]) -> dict[str, str | int]:
