@@ -10,11 +10,11 @@ from hub_entity import HubEntity
 class Graphic:
     def __init__(
         self,
-        start,
-        end
+        start: dict[str, Any],
+        end: dict[str, Any]
     ) -> None:
-        self.start = start
-        self.end = end
+        self.start: dict[str, Any] = start
+        self.end: dict[str, Any] = end
 
     def put_turns(
         self,
@@ -186,8 +186,8 @@ class Graphic:
                 str(h["meta"]["color"]))
             texture: str = self.get_texture(h)
             hub_entities.append(HubEntity(pos_x=pos_x,
-                                                     pos_y=pos_y,
-                                                     color_point=color_point,
+                                pos_y=pos_y,
+                                color_point=color_point,
                                 texture=texture,
                                 name=str(h["name"]),
                                 type_zone=str(h["meta"]["zone"])))
