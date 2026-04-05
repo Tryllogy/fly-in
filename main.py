@@ -40,7 +40,11 @@ def main() -> None:
         for d in drones_entities:
             d.all_turns = all_turns
         DroneEntity.set_max_turn(all_turns)
-        _ = Entity(ignore_paused=True, input=graphic.next_input)
+        _ = Entity(
+            ignore_paused=True,
+            input=graphic.next_input,
+            update=graphic.update_auto_turns
+        )
         app.run()
     except Exception as e:
         print(f"Error: {e}")

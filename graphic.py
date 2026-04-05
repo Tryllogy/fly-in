@@ -5,6 +5,7 @@ from ursina.prefabs.first_person_controller import FirstPersonController
 from drone import Drone
 from typing import Generator, Any
 from hub_entity import HubEntity
+import time
 
 
 class Graphic:
@@ -15,6 +16,9 @@ class Graphic:
     ) -> None:
         self.start: dict[str, Any] = start
         self.end: dict[str, Any] = end
+        self.auto_turns_enabled: bool = False
+        self.auto_turn_interval: float = 1.0
+        self.last_auto_turn_at: float = 0.0
 
     def put_turns(
         self,
@@ -39,6 +43,26 @@ class Graphic:
         if key == "n":
             DroneEntity.add_turn()
             self.put_turns(DroneEntity.turn)
+
+        if key == "p":
+            self.auto_turns_enabled = not self.auto_turns_enabled
+            self.last_auto_turn_at = time.perf_counter()
+
+    def update_auto_turns(self) -> None:
+        if not self.auto_turns_enabled:
+            return
+
+        if DroneEntity.turn >= DroneEntity.max_turn:
+            self.auto_turns_enabled = False
+            return
+
+        now: float = time.perf_counter()
+        if (now - self.last_auto_turn_at) < self.auto_turn_interval:
+            return
+
+        DroneEntity.add_turn()
+        self.put_turns(DroneEntity.turn)
+        self.last_auto_turn_at = now
 
     def input(self, key: str) -> None:
         if key == 'escape':

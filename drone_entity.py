@@ -26,6 +26,7 @@ class DroneEntity(Entity):
         self.last_applied_turn: int = -1
         self.move_duration: float = 0.5
         self.all_turns: dict[int, list[dict[int, str]]] = {}
+        self.activated: bool = False
 
     def move_to_hub(
         self,

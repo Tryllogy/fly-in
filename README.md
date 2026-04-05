@@ -39,6 +39,7 @@ make run FILE=maps/medium/03_priority_puzzle.txt
 ### Controls
 
 - `n`: advance one turn and animate the next movement step
+- `p`: automatic advance
 - `Esc`: quit the application
 
 ## Algorithm and Implementation Strategy
