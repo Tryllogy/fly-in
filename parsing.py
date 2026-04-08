@@ -3,6 +3,17 @@ from parsing_validator import ParsingValidator
 
 
 def parse_dict(lst: list[str]) -> dict[str, str | int]:
+    """Parse metadata tokens into a dictionary.
+
+    Args:
+        lst: Metadata tokens such as `[zone=normal]`.
+
+    Returns:
+        Parsed metadata dictionary.
+
+    Raises:
+        ValueError: If format or key is invalid.
+    """
     meta: dict[str, str | int] = {}
 
     for word in lst:
@@ -25,6 +36,14 @@ def parse_dict(lst: list[str]) -> dict[str, str | int]:
 def parse_meta_data(
     line: str
 ) -> dict[str, Any]:
+    """Parse one hub declaration line.
+
+    Args:
+        line: Raw declaration line from the map.
+
+    Returns:
+        Parsed zone dictionary with `name`, `position`, and `meta`.
+    """
     words: list[str] = line.split()
     name: str = words[1].strip()
     position: tuple[int, int] = (int(words[2].strip()), int(words[3].strip()))
@@ -38,6 +57,17 @@ def parse_meta_data(
 
 
 def parse_connection(words: list[str]) -> dict[str, str | int]:
+    """Parse one connection declaration.
+
+    Args:
+        words: Tokenized connection line.
+
+    Returns:
+        Connection dictionary with capacity and turn usage.
+
+    Raises:
+        ValueError: If connection metadata key is invalid.
+    """
     zones: list[str] = words[1].split("-")
 
     if len(words) == 3:
@@ -65,6 +95,18 @@ def parse_map(
            dict[str, Any],
            list[dict[str, Any]],
            list[dict[str, str | int]]]:
+    """Parse a full map file content string.
+
+    Args:
+        map: Full textual content of the map.
+
+    Returns:
+        Tuple containing drone count, start hub, end hub,
+        intermediate hubs, and connections.
+
+    Raises:
+        ValueError: If mandatory sections are missing or malformed.
+    """
     n_drones: int = 0
     start: dict[str, Any] = {}
     end: dict[str, Any] = {}
@@ -116,6 +158,17 @@ def open_map(map_name: str) -> tuple[int, dict[str, Any],
                                      dict[str, Any],
                                      list[dict[str, Any]],
                                      list[dict[str, str | int]]]:
+    """Open, parse, validate, and normalize a map file.
+
+    Args:
+        map_name: Path to the map file.
+
+    Returns:
+        Tuple containing normalized simulation data structures.
+
+    Raises:
+        ValueError: If parsing or validation fails.
+    """
     n_drones: int = 0
     start: dict[str, Any] = {}
     end: dict[str, Any] = {}

@@ -5,6 +5,8 @@ from typing_extensions import Self
 
 
 class ZoneEnum(Enum):
+    """Enumeration of supported zone types."""
+
     NORMAL = 1
     BLOCKED = 2
     RESTRICTED = 3
@@ -12,6 +14,8 @@ class ZoneEnum(Enum):
 
 
 class ParsingValidator(BaseModel):
+    """Validate the parsed map structure and business rules."""
+
     n_drones: int = Field(lt=2147483647)
     start: dict[str, Any] = Field(...)
     end: dict[str, Any] = Field(...)
@@ -22,6 +26,14 @@ class ParsingValidator(BaseModel):
     def check_name(
         value: str
     ) -> None:
+        """Validate that a zone name has no spaces or dashes.
+
+        Args:
+            value: Zone name to validate.
+
+        Raises:
+            ValueError: If the name contains unsupported characters.
+        """
         if " " in value or "-" in value:
             raise ValueError(
                 f"Zone name cannot contain spaces or dashes: {value}")
@@ -30,6 +42,14 @@ class ParsingValidator(BaseModel):
     def meta(
         value: dict[str, Any]
     ) -> None:
+        """Validate metadata keys and values for a zone.
+
+        Args:
+            value: Zone dictionary containing a `meta` section.
+
+        Raises:
+            ValueError: If metadata schema or values are invalid.
+        """
         meta_dict: Any = value.get("meta", {})
         for key, val in meta_dict.items():
             if not isinstance(key, str):
@@ -59,6 +79,18 @@ class ParsingValidator(BaseModel):
         cls: type["ParsingValidator"],
         value: int
     ) -> int:
+        """Validate that the drone count is strictly positive.
+
+        Args:
+            cls: Validator class reference.
+            value: Declared drone count.
+
+        Returns:
+            The validated drone count.
+
+        Raises:
+            ValueError: If drone count is not positive.
+        """
         if (value <= 0):
             raise ValueError(
                 f"Number of drones must be a positive integer: {value}")
@@ -70,6 +102,18 @@ class ParsingValidator(BaseModel):
         cls: type["ParsingValidator"],
         value: list[dict[str, str | int]]
     ) -> list[dict[str, str | int]]:
+        """Validate connection field structure and capacity values.
+
+        Args:
+            cls: Validator class reference.
+            value: Connection dictionaries to validate.
+
+        Returns:
+            The validated list of connections.
+
+        Raises:
+            ValueError: If connection entries are malformed.
+        """
         if not isinstance(value, list):
             raise ValueError(f"Connection must be a list of dicts: {value}")
         for item in value:
@@ -92,6 +136,11 @@ class ParsingValidator(BaseModel):
     def validate_meta_start_end(
         self
     ) -> Self:
+        """Validate names and metadata of start and end hubs.
+
+        Returns:
+            The validated model instance.
+        """
         self.check_name(self.start["name"])
         self.check_name(self.end["name"])
         self.meta(self.start)
@@ -102,6 +151,14 @@ class ParsingValidator(BaseModel):
     def validate_meta_hub(
         self
     ) -> Self:
+        """Validate intermediate hub uniqueness and metadata.
+
+        Returns:
+            The validated model instance.
+
+        Raises:
+            ValueError: If hub names conflict or metadata is invalid.
+        """
         for hub in self.hub:
             for h2 in self.hub:
                 if hub != h2 and hub["name"] == h2["name"]:
@@ -120,6 +177,14 @@ class ParsingValidator(BaseModel):
     def validate_start_end_drones(
         self
     ) -> Self:
+        """Validate start and end capacities against drone count.
+
+        Returns:
+            The validated model instance.
+
+        Raises:
+            ValueError: If max capacities do not match `n_drones`.
+        """
         if self.start['meta'].get("max_drones") is not None:
             if (self.start['meta']["max_drones"] != self.n_drones):
                 raise ValueError(
@@ -136,6 +201,14 @@ class ParsingValidator(BaseModel):
     def validate_connection_names(
         self
     ) -> Self:
+        """Validate that each connection references known zones.
+
+        Returns:
+            The validated model instance.
+
+        Raises:
+            ValueError: If a connection references unknown names.
+        """
         names: list[str] = []
         for hub in self.hub:
             names.append(hub["name"])
@@ -152,6 +225,14 @@ class ParsingValidator(BaseModel):
     def validate_connection_unique_link(
         self
     ) -> Self:
+        """Ensure no duplicate or symmetric duplicate connection exists.
+
+        Returns:
+            The validated model instance.
+
+        Raises:
+            ValueError: If a duplicate link is found.
+        """
         for i, connection in enumerate(self.connection):
             for j, other_connection in enumerate(self.connection):
                 if i != j:

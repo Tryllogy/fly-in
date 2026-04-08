@@ -3,6 +3,8 @@ from ursina import (Entity, Vec3, color, Text)
 
 
 class HubEntity(Entity):
+    """Render a hub with a label in the scene."""
+
     def __init__(
         self,
             pos_x: int,
@@ -12,6 +14,16 @@ class HubEntity(Entity):
             name: str,
             type_zone: str
     ) -> None:
+        """Initialize the hub entity.
+
+        Args:
+            pos_x: X-axis world position.
+            pos_y: Z-axis world position.
+            color_point: Hub color object.
+            texture: Texture name.
+            name: Hub name.
+            type_zone: Zone type string.
+        """
         super().__init__(
             model='cube',
             scale=0.5,
@@ -30,6 +42,7 @@ class HubEntity(Entity):
         self.create_text()
 
     def create_text(self) -> None:
+        """Create a billboard label showing name and zone type."""
         self.label: Text = Text(
             parent=self,
             text=f"{self.name} [{self.type_zone}]",

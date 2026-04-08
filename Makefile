@@ -48,3 +48,4 @@ run:
 
 clean:
 	rm -rf $(VENV)
+	rm -rf .mypy_cache

@@ -4,6 +4,13 @@ from hub_entity import HubEntity
 
 
 class DroneEntity(Entity):
+    """Render and animate a drone in the simulation.
+
+    Attributes:
+        turn: Current global simulation turn displayed by entities.
+        max_turn: Maximum available turn for playback.
+    """
+
     turn: int = 0
     max_turn: int = 0
 
@@ -14,6 +21,14 @@ class DroneEntity(Entity):
             pos_y: int,
             hubs: list[HubEntity]
     ) -> None:
+        """Initialize a drone entity with visual components.
+
+        Args:
+            drone_id: Identifier of the drone.
+            pos_x: Initial x-axis grid position.
+            pos_y: Initial y-axis grid position.
+            hubs: Available hub entities used for movements.
+        """
         super().__init__(
             position=Vec3(pos_x, 2, pos_y),
             collider='box'
@@ -33,6 +48,12 @@ class DroneEntity(Entity):
         hub_pos: Vec3,
         duration: float = 0.35
     ) -> None:
+        """Animate the drone to a target hub position.
+
+        Args:
+            hub_pos: Target hub position in world coordinates.
+            duration: Animation duration in seconds.
+        """
         self.animate_position(
             Vec3(hub_pos.x, 2, hub_pos.z),
             duration=duration,
@@ -40,6 +61,7 @@ class DroneEntity(Entity):
         )
 
     def add_name(self) -> None:
+        """Attach a billboard text label to the drone."""
         self.label: Text = Text(
             parent=self,
             text=f"Drone {self.drone_id}",
@@ -50,6 +72,7 @@ class DroneEntity(Entity):
         )
 
     def create_body(self) -> None:
+        """Create body, arms, and rotors for the drone model."""
         self.body: Entity = Entity(
             parent=self,
             model='cube',
@@ -88,6 +111,7 @@ class DroneEntity(Entity):
         ]
 
     def update(self) -> None:
+        """Apply movement for the current turn if needed."""
         if self.last_applied_turn == DroneEntity.turn:
             return
 
@@ -117,11 +141,17 @@ class DroneEntity(Entity):
 
     @classmethod
     def add_turn(cls) -> None:
+        """Increment the global turn within bounds."""
         if cls.turn == cls.max_turn:
             return
         cls.turn += 1
 
     @classmethod
     def set_max_turn(cls, all_turns: dict[int, list[dict[int, str]]]) -> None:
+        """Set the maximum playable turn from precomputed turns.
+
+        Args:
+            all_turns: Mapping of turn index to drone positions.
+        """
         max_turn: int = list(all_turns.keys())[-1]
         cls.max_turn = max_turn

@@ -7,6 +7,7 @@ import sys
 
 
 def main() -> None:
+    """Parse the map, build the scene, and start the app loop."""
     if len(sys.argv) == 1:
         print("Usage: python main.py <map_file>")
         return

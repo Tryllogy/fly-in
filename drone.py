@@ -3,6 +3,12 @@ from copy import deepcopy
 
 
 class Drone:
+    """Manage drones moving from start hub to end hub.
+
+    Attributes:
+        turn: Shared turn counter for logic consumers.
+    """
+
     turn: int = 0
 
     def __init__(
@@ -13,6 +19,15 @@ class Drone:
         hub: list[dict[str, Any]],
         connection: list[dict[str, str | int]]
     ) -> None:
+        """Initialize the simulation data structure.
+
+        Args:
+            n_drones: Number of drones to simulate.
+            start: Metadata dictionary for the start hub.
+            end: Metadata dictionary for the end hub.
+            hub: List of intermediate hub dictionaries.
+            connection: List of connection dictionaries.
+        """
         self.n_drones: int = n_drones
         self.drones: list[dict[int, list[str | bool]]] = []
         self.start: dict[str, Any] = start
@@ -26,11 +41,20 @@ class Drone:
 
     @classmethod
     def from_file(cls, file_path: str) -> "Drone":
+        """Build a `Drone` instance from a map file.
+
+        Args:
+            file_path: Path to the map file.
+
+        Returns:
+            A fully initialized `Drone` object.
+        """
         from parsing import open_map
         n_drones, start, end, hub, connection = open_map(file_path)
         return cls(n_drones, start, end, hub, connection)
 
     def show_data(self) -> None:
+        """Print parsed and computed simulation data to stdout."""
         print(f"Number of drones: {self.n_drones}", end="\n\n")
         print(f"Start: {self.start}", end="\n\n")
         print(f"End: {self.end}", end="\n\n")
@@ -47,12 +71,14 @@ class Drone:
             print(f"Drone {list(d.keys())[0]}: {list(d.values())[0]}")
 
     def create_drones(self) -> None:
+        """Create drone records initialized at the start hub."""
         for i in range(1, self.n_drones + 1):
             self.drones.append({
                 i: [self.start["name"], True]
             })
 
     def make_belonging(self) -> None:
+        """Build an adjacency-like structure from all connections."""
         names: set[str | int] = set()
         for con in self.connection:
             if con.get("1") not in names:
@@ -87,6 +113,14 @@ class Drone:
         self,
         name: str
     ) -> str | None:
+        """Return the first parent node linked to a given node.
+
+        Args:
+            name: Node name to inspect.
+
+        Returns:
+            The parent name if found, otherwise `None`.
+        """
         for b in self.belonging:
             for k, v in b.items():
                 if name in v:
@@ -96,6 +130,12 @@ class Drone:
     def move_drones(
         self
     ) -> Generator[dict[int, list[str | bool]] | int, None, None]:
+        """Advance drones turn by turn and yield movement snapshots.
+
+        Yields:
+            Either a moved drone record or the number of moved drones
+            at the end of each turn.
+        """
         turn: int = 0
         print()
         while self.end["meta"]["actual_drones"] != \
@@ -128,6 +168,17 @@ class Drone:
         self,
         drone: Any
     ) -> Any:
+        """Compute shortest reachable distances from a drone position.
+
+        Args:
+            drone: Drone record to process.
+
+        Returns:
+            A map from zone name to distance.
+
+        Raises:
+            ValueError: If no neighbors can be retrieved.
+        """
         _, data = next(iter(drone.items()))
         name: str = data[0]
         visited: dict[str, int] = {name: 0}
@@ -159,6 +210,15 @@ class Drone:
         drone: Any,
         path: Any
     ) -> bool:
+        """Move one drone by selecting a valid shortest-step target.
+
+        Args:
+            drone: Drone record to update.
+            path: Distance map previously computed by `step()`.
+
+        Returns:
+            `True` if the drone moved, else `False`.
+        """
         actual: tuple[str, int] | None = None
 
         name_closest_end: str | None = self.get_closest_to_end_from_point(
@@ -205,6 +265,18 @@ class Drone:
         drone: Any,
         true_path: Any
     ) -> str | None:
+        """Pick the next node that keeps proximity to the end hub.
+
+        Args:
+            drone: Drone record used for temporary path computation.
+            true_path: Reachable nodes in the real constrained graph.
+
+        Returns:
+            A node name if a compatible candidate is found, else `None`.
+
+        Raises:
+            ValueError: If the temporary path to end cannot be found.
+        """
         saved_connection = deepcopy(self.connection)
         false_connection = deepcopy(self.connection)
         for f_c in false_connection:
@@ -246,6 +318,15 @@ class Drone:
             drone: dict[Any, Any],
             pos: tuple[str, int] | None
     ) -> bool:
+        """Update one drone position and related occupancy counters.
+
+        Args:
+            drone: Drone record to mutate.
+            pos: Destination tuple `(zone_name, distance)`.
+
+        Returns:
+            `True` on success, otherwise `False`.
+        """
         if pos is None:
             return False
 
@@ -272,6 +353,7 @@ class Drone:
         return True
 
     def reset_connection_turn(self) -> None:
+        """Reset per-turn link usage counters."""
         for c in self.connection:
             if c not in self.connection_not_reset:
                 c["connection_turn"] = 0
@@ -282,6 +364,15 @@ class Drone:
         actual: tuple[str, int],
         path: Any
     ) -> list[tuple[str, int]]:
+        """Return valid predecessor nodes for a path level.
+
+        Args:
+            actual: Current node and level.
+            path: Distance map.
+
+        Returns:
+            List of compatible parent nodes.
+        """
         possible_neighbors: list[tuple[str, int]] = []
         for k, v in path.items():
             if v == actual[1] - 1:
@@ -295,6 +386,15 @@ class Drone:
         name: str,
         actual: tuple[str, int]
     ) -> bool:
+        """Check if two nodes are directly connected.
+
+        Args:
+            name: Candidate parent node.
+            actual: Target node tuple.
+
+        Returns:
+            `True` if connected, otherwise `False`.
+        """
         for b in self.belonging:
             for k, v in b.items():
                 if k == name:
@@ -307,6 +407,14 @@ class Drone:
         self,
         name: str
     ) -> bool:
+        """Validate that a zone can receive one more drone.
+
+        Args:
+            name: Zone name.
+
+        Returns:
+            `True` if capacity allows insertion, else `False`.
+        """
         if name == self.start["name"]:
             actual_drones: int = int(self.start["meta"]["actual_drones"])
             max_drones: int = int(self.start["meta"]["max_drones"])
@@ -329,6 +437,15 @@ class Drone:
         name: str,
         status: str
     ) -> bool:
+        """Check whether a hub matches a given zone status.
+
+        Args:
+            name: Hub name.
+            status: Expected zone status.
+
+        Returns:
+            `True` if status matches, otherwise `False`.
+        """
         for h in self.hub:
             if h["name"] == name:
                 for k, v in h["meta"].items():
@@ -341,6 +458,14 @@ class Drone:
         self,
         name: str
     ) -> list[Any]:
+        """Get adjacent nodes with available link capacity.
+
+        Args:
+            name: Node name.
+
+        Returns:
+            List of neighbor node names.
+        """
         neighbors: list[Any] = []
         for b in self.belonging:
             for k, v in b.items():
@@ -362,6 +487,15 @@ class Drone:
         con_1: str,
         con_2: str
     ) -> Any:
+        """Find the connection object between two zones.
+
+        Args:
+            con_1: First zone name.
+            con_2: Second zone name.
+
+        Returns:
+            Matching connection dictionary or `None`.
+        """
         for c in self.connection:
             if c.get("1") == con_1 and c.get("2") == con_2:
                 return c

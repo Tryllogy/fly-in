@@ -9,11 +9,19 @@ import time
 
 
 class Graphic:
+    """Build and control the 3D visualization of the map and drones."""
+
     def __init__(
         self,
         start: dict[str, Any],
         end: dict[str, Any]
     ) -> None:
+        """Initialize rendering state and playback controls.
+
+        Args:
+            start: Parsed start hub dictionary.
+            end: Parsed end hub dictionary.
+        """
         self.start: dict[str, Any] = start
         self.end: dict[str, Any] = end
         self.auto_turns_enabled: bool = False
@@ -24,6 +32,11 @@ class Graphic:
         self,
         turns: int
     ) -> None:
+        """Display or update the on-screen turn counter.
+
+        Args:
+            turns: Current turn number.
+        """
         if hasattr(self, "label") and self.label is not None:
             setattr(self.label, "text", f"Turns: {turns}")
             return
@@ -37,6 +50,11 @@ class Graphic:
         )
 
     def next_input(self, key: str) -> None:
+        """Handle keyboard input for manual or auto turn playback.
+
+        Args:
+            key: Pressed key value.
+        """
         if key == 'escape':
             quit()
 
@@ -49,6 +67,7 @@ class Graphic:
             self.last_auto_turn_at = time.perf_counter()
 
     def update_auto_turns(self) -> None:
+        """Advance turns automatically based on the configured interval."""
         if not self.auto_turns_enabled:
             return
 
@@ -65,6 +84,11 @@ class Graphic:
         self.last_auto_turn_at = now
 
     def input(self, key: str) -> None:
+        """Handle generic input callback.
+
+        Args:
+            key: Pressed key value.
+        """
         if key == 'escape':
             quit()
 
@@ -72,6 +96,14 @@ class Graphic:
         self,
         hub: dict[str, Any]
     ) -> str:
+        """Choose the texture for a hub entity.
+
+        Args:
+            hub: Hub metadata dictionary.
+
+        Returns:
+            Texture name for rendering.
+        """
         if hub["meta"]["color"] == "rainbow":
             return "rainbow"
         else:
@@ -81,6 +113,14 @@ class Graphic:
         self,
         color_str: str
     ) -> Any:
+        """Resolve a color name from Ursina color attributes.
+
+        Args:
+            color_str: Color name string.
+
+        Returns:
+            Resolved Ursina color object.
+        """
         if (hasattr(color, color_str)):
             return getattr(color, color_str)
         else:
@@ -91,6 +131,12 @@ class Graphic:
         space: int,
         drones: Drone
     ) -> None:
+        """Draw connection lines between zones.
+
+        Args:
+            space: Grid spacing multiplier.
+            drones: Simulation object containing connections.
+        """
 
         for c in drones.connection:
             vertices: list[Vec3] = []
@@ -128,6 +174,11 @@ class Graphic:
             )
 
     def set_ground(self, scale: int) -> None:
+        """Create the scene ground plane.
+
+        Args:
+            scale: Ground scale value.
+        """
         self.gound: Entity = Entity(
             model='plane',
             collider='box',
@@ -137,6 +188,7 @@ class Graphic:
         )
 
     def set_player(self) -> None:
+        """Spawn and configure the first-person controller."""
         self.player: FirstPersonController = FirstPersonController(
             z=-10,
             color=color.orange,
@@ -158,6 +210,15 @@ class Graphic:
         space: int,
         start: dict[str, Any]
     ) -> HubEntity:
+        """Create the start hub entity.
+
+        Args:
+            space: Grid spacing multiplier.
+            start: Start hub metadata.
+
+        Returns:
+            Created start `HubEntity`.
+        """
         pos_x: int = int(start["position"][0]) * space
         pos_y: int = int(start["position"][1]) * space
         name: str = str(start["name"])
@@ -179,6 +240,15 @@ class Graphic:
         space: int,
         end: dict[str, Any]
     ) -> HubEntity:
+        """Create the end hub entity.
+
+        Args:
+            space: Grid spacing multiplier.
+            end: End hub metadata.
+
+        Returns:
+            Created end `HubEntity`.
+        """
         pos_x: int = int(end["position"][0]) * space
         pos_y: int = int(end["position"][1]) * space
         name: str = str(end["name"])
@@ -202,6 +272,17 @@ class Graphic:
         space: int,
         drones: Drone
     ) -> list[HubEntity]:
+        """Create all hub entities including start and end.
+
+        Args:
+            start: Prebuilt start hub entity.
+            end: Prebuilt end hub entity.
+            space: Grid spacing multiplier.
+            drones: Simulation object containing hub metadata.
+
+        Returns:
+            List of all created `HubEntity` objects.
+        """
         hub_entities: list[HubEntity] = [start, end]
         for h in drones.hub:
             pos_x: int = int(h["position"][0]) * space
@@ -223,6 +304,15 @@ class Graphic:
         drones: Drone,
         hubs: list[HubEntity]
     ) -> list[DroneEntity]:
+        """Create visual entities for all drones.
+
+        Args:
+            drones: Simulation object with drone count and start position.
+            hubs: List of hub entities used for movement targets.
+
+        Returns:
+            List of created `DroneEntity` objects.
+        """
         drones_entities: list[DroneEntity] = []
         for i in range(drones.n_drones):
             drones_entities.append(DroneEntity(
@@ -234,6 +324,7 @@ class Graphic:
         return drones_entities
 
     def set_sky(self) -> None:
+        """Initialize scene lighting and sky background."""
         self.sun: DirectionalLight = DirectionalLight()
         self.sun.look_at(Vec3(1, -1, -1))
         Sky()
@@ -243,6 +334,15 @@ class Graphic:
         drones: Drone,
         start: HubEntity
     ) -> dict[int, list[dict[int, str]]]:
+        """Convert simulation generator output into turn snapshots.
+
+        Args:
+            drones: Simulation object.
+            start: Start hub entity used for initial state.
+
+        Returns:
+            Mapping of turn index to drone positions by id.
+        """
         movements: Generator[Any, None, None] = drones.move_drones()
         all_movements: list[dict[int, str]] = []
         turn: int = 1
